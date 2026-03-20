@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TipidLitro — Range Calculator</title>
+<link rel="icon" href="logo.ico" type="image/x-icon">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0b0f0e;--surface:#131918;--surface2:#1a2120;--border:#243130;
+  --accent:#ff773d;--accent2:#ff773d;--accent-dim:rgba(255,119,61,.12);
+  --text:#e8f0ef;--text2:#8fa8a4;--text3:#506663;
+  --red:#ff5a5a;--yellow:#f0c040;--yellow-dim:rgba(240,192,64,.15);
+  --blue:#4db8ff;--blue-dim:rgba(77,184,255,.12);
+  --radius:16px;--radius-sm:10px;--tr:.18s cubic-bezier(.4,0,.2,1);
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
+  --page-max:1160px;--input-h:44px;--btn-primary-h:50px;--focus-ring:0 0 0 3px var(--accent-dim);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.45}
+.blob{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+.blob-1{width:500px;height:500px;background:rgba(255,119,61,.06);top:-200px;right:-100px}
+.blob-2{width:350px;height:350px;background:rgba(255,119,61,.04);bottom:0;left:-100px}
+
+/* ── APP SHELL ── */
+.app{position:relative;z-index:1;max-width:var(--page-max);margin:0 auto;padding:0 16px 60px}
+@media(min-width:480px){.app{padding:0 20px 80px}}
+@media(min-width:768px){.app{padding:0 28px 80px}}
+
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 32px;gap:12px}
+@media(min-width:480px){header{padding:28px 0 40px}}
+.logo{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--text);text-decoration:none;letter-spacing:-.5px;flex-shrink:0}
+@media(min-width:480px){.logo{font-size:22px}}
+.logo-icon{width:34px;height:34px;border-radius:10px;display:block;object-fit:contain;flex-shrink:0}
+.logo span{color:var(--accent)}
+.badge{font-size:11px;font-weight:500;padding:5px 11px;border-radius:100px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(255,119,61,.2);white-space:nowrap}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;gap:6px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px;width:100%;max-width:100%;flex-wrap:wrap;justify-content:center}
+@media(min-width:480px){.nav-tabs{gap:8px;margin-bottom:36px}}
+.nav-tab{font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;transition:all var(--tr);text-decoration:none;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:36px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.nav-tab.active{background:var(--accent-dim);color:var(--accent);font-weight:600}
+.nav-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+
+/* ── HERO ── */
+.hero{margin-bottom:28px}
+@media(min-width:480px){.hero{margin-bottom:36px}}
+.hero-label{font-size:11px;font-weight:500;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.hero-label::before{content:'';display:inline-block;width:18px;height:2px;background:var(--accent);border-radius:2px}
+.hero h1{font-family:var(--font-display);font-size:clamp(26px,7vw,50px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin-bottom:10px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:14px;color:var(--text2);line-height:1.65;max-width:520px;font-weight:300}
+@media(min-width:480px){.hero p{font-size:15px}}
+
+/* ── GRID ── */
+.grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
+@media(min-width:860px){.grid{grid-template-columns:1fr 390px;gap:24px}}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;position:relative}
+@media(min-width:480px){.card{padding:22px 20px}}
+@media(min-width:768px){.card{padding:24px}}
+.card::before{content:'';position:absolute;inset:0;border-radius:var(--radius);background:linear-gradient(135deg,rgba(255,119,61,.03) 0%,transparent 60%);pointer-events:none}
+.card-title{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.card-title .dot.blue{background:var(--accent)}
+
+/* ── FIELDS ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.field-row{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px}
+@media(min-width:380px){.field-row{grid-template-columns:1fr 1fr}}
+.field-row .field{margin-bottom:0}
+
+/* ── INPUTS ── */
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap .prefix{position:absolute;left:12px;font-size:12px;color:var(--text3);pointer-events:none;font-weight:500;white-space:nowrap;line-height:1}
+.input-wrap .suffix{position:absolute;right:12px;font-size:12px;color:var(--text3);pointer-events:none;font-weight:500;white-space:nowrap;line-height:1}
+input,select{width:100%;height:var(--input-h);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 14px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;transition:border-color var(--tr),box-shadow var(--tr);-webkit-appearance:none;appearance:none;display:block}
+.input-wrap.has-prefix input{padding-left:50px}
+.input-wrap.has-suffix input{padding-right:50px}
+input:focus,select:focus{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent-dim)}
+input::placeholder{color:var(--text3)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23506663' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:36px;cursor:pointer}
+select option{background:#1a2120}
+.divider{height:1px;background:var(--border);margin:16px 0}
+@media(min-width:480px){.divider{margin:18px 0}}
+
+/* ── RANGE SLIDER INPUT ── */
+.range-group{margin-bottom:16px}
+.range-label-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.range-label-row label{font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.05em;text-transform:uppercase}
+.range-value-badge{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(255,119,61,.2);border-radius:100px;padding:3px 10px}
+.range-inputs-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.range-sep{font-size:13px;color:var(--text3);text-align:center;font-weight:500}
+/* range slider */
+.slider-wrap{position:relative;height:20px;display:flex;align-items:center}
+.slider-track{position:relative;width:100%;height:5px;background:var(--border);border-radius:99px;overflow:visible}
+.slider-fill{position:absolute;height:100%;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;pointer-events:none;transition:left .05s,width .05s}
+input[type=range]{position:absolute;width:100%;height:100%;opacity:0;cursor:pointer;margin:0;top:0;left:0}
+.slider-thumb{position:absolute;width:16px;height:16px;background:var(--accent);border-radius:50%;pointer-events:none;top:50%;transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(255,119,61,.4);transition:left .05s}
+
+/* ── VEHICLE TYPE CHIPS ── */
+.vtype-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:0}
+@media(min-width:400px){.vtype-strip{gap:8px}}
+.vtype-chip{padding:10px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all var(--tr);text-align:center;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;-webkit-tap-highlight-color:transparent}
+.vtype-chip.selected{border-color:var(--accent);background:var(--accent-dim)}
+.vtype-chip .chip-icon{font-size:20px;line-height:1}
+.vtype-chip .chip-label{font-size:10px;color:var(--text2);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+@media(min-width:400px){.vtype-chip .chip-label{font-size:11px}}
+.vtype-chip.selected .chip-label{color:var(--accent)}
+.vtype-chip .chip-sub{font-size:9px;color:var(--text3)}
+
+/* ── FUEL CHIPS ── */
+.fuel-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+@media(min-width:360px){.fuel-strip{gap:8px}}
+.fuel-chip{padding:9px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all var(--tr);text-align:center;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+@media(min-width:400px){.fuel-chip{padding:10px 6px}}
+.fuel-chip.selected{border-color:var(--accent);background:var(--accent-dim)}
+.chip-name{font-size:9px;color:var(--text2);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+@media(min-width:400px){.chip-name{font-size:10px}}
+.chip-price{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text);line-height:1}
+@media(min-width:400px){.chip-price{font-size:14px}}
+.fuel-chip.selected .chip-price{color:var(--accent)}
+
+/* ── CTA BUTTON ── */
+.btn{width:100%;height:var(--btn-primary-h);background:var(--accent);color:#0b0f0e;border:none;border-radius:var(--radius-sm);font-family:var(--font-display);font-size:15px;font-weight:700;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;letter-spacing:.01em;-webkit-tap-highlight-color:transparent}
+.btn:hover{opacity:.9}
+.btn:active{transform:scale(.98);opacity:.85}
+.btn.blue{background:var(--accent);color:#0b0f0e}
+.btn.blue:hover{opacity:.9}
+
+/* ── RESULTS ── */
+.result-panel{display:none}
+.result-panel.on{display:flex;flex-direction:column;gap:10px}
+@media(min-width:480px){.result-panel.on{gap:12px}}
+
+/* Hero result — dual range */
+.result-hero{background:linear-gradient(135deg,#0d1f1c 0%,#0f2a20 100%);border:1px solid rgba(255,119,61,.2);border-radius:var(--radius);padding:24px 20px;position:relative;overflow:hidden}
+@media(min-width:480px){.result-hero{padding:28px 24px}}
+.result-hero::after{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,rgba(255,119,61,.15) 0%,transparent 70%);pointer-events:none}
+.result-label{font-size:10px;font-weight:600;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;text-align:center}
+
+/* Range bar visual */
+.range-bar-wrap{margin-bottom:16px}
+.range-bar-track{position:relative;height:12px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:8px}
+.range-bar-fill{position:absolute;inset-y:0;background:linear-gradient(90deg,var(--accent2),var(--accent));border-radius:99px;transition:left .6s cubic-bezier(.4,0,.2,1),width .6s cubic-bezier(.4,0,.2,1)}
+.range-bar-labels{display:flex;justify-content:space-between;align-items:flex-start}
+.range-bar-val{text-align:center}
+.range-bar-val .km-val{font-family:var(--font-display);font-size:clamp(28px,7vw,46px);font-weight:800;color:var(--accent);line-height:1;letter-spacing:-1.5px}
+.range-bar-val .km-unit{font-size:12px;color:var(--text3);font-weight:400;margin-top:2px}
+.range-bar-center{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 12px}
+.range-bar-center .mid-label{font-size:11px;color:var(--text3);font-weight:400}
+.range-bar-center .mid-tilde{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--text3);line-height:1}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center}
+@media(min-width:480px){.stat-box{padding:14px 10px}}
+.stat-val{font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1}
+@media(min-width:480px){.stat-val{font-size:19px}}
+.stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+@media(min-width:400px){.stat-lbl{font-size:10px}}
+
+/* Budget zones */
+.zones-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px}
+.zones-title{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:12px}
+.zone-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.zone-row:last-child{margin-bottom:0}
+.zone-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.zone-label{font-size:12px;color:var(--text2);flex:1}
+.zone-val{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text)}
+.zone-bar-wrap{flex:2;height:5px;background:var(--border);border-radius:99px;overflow:hidden}
+.zone-bar{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+
+/* Tip card */
+.tip-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;display:flex;gap:10px;align-items:flex-start}
+@media(min-width:480px){.tip-card{padding:14px 16px;gap:12px}}
+.tip-icon{width:30px;height:30px;border-radius:8px;background:var(--yellow-dim);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.tip-text{font-size:13px;color:var(--text2);line-height:1.6;padding-top:1px}
+@media(min-width:480px){.tip-text{font-size:13px}}
+.tip-text strong{color:var(--text);font-weight:500}
+
+/* Budget scenarios */
+.scenarios-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px}
+.scenarios-title{font-size:12px;color:var(--text2);font-weight:500;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.sc-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:7px;gap:10px}
+.sc-row:last-child{margin-bottom:0}
+.sc-left{display:flex;flex-direction:column;gap:1px}
+.sc-budget{font-size:13px;font-weight:500;color:var(--text)}
+.sc-label{font-size:10px;color:var(--text3)}
+.sc-km{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--accent);white-space:nowrap}
+
+/* Placeholder */
+#resultPlaceholder{text-align:center;padding:36px 20px}
+@media(min-width:480px){#resultPlaceholder{padding:44px 24px}}
+
+/* ── ANIMATIONS ── */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,119,61,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.fade-in{animation:fadeIn .4s ease both}
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="app">
+
+  <header>
+    <a class="logo" href="index.html"><img class="logo-icon" src="logo.png" alt="TipidLitro">Tipid<span>Litro</span></a>
+    <span class="badge">Range Calculator</span>
+  </header>
+
+  <!-- ── NAV TABS ── -->
+  <div class="nav-tabs">
+    <a class="nav-tab" href="index.html">Home</a>
+    <a class="nav-tab" href="tipidlitro-calculator.html">🗺️ <span>Trip Calculator</span></a>
+    <button class="nav-tab active">📏 <span>Range Calculator</span></button>
+    <a class="nav-tab" href="tipidlitro-stations.html">⛽ Gas Stations</a>
+  </div>
+
+  <div class="hero">
+    <div class="hero-label">Fuel Range Estimator</div>
+    <h1>How far can you<br>go on your <em>tank?</em></h1>
+    <p>Enter your fuel price and consumption range to instantly see how many kilometers you can cover per peso and per full tank.</p>
+  </div>
+
+  <div class="grid">
+    <!-- ── LEFT: INPUTS ── -->
+    <div>
+      <div class="card">
+
+        <!-- Vehicle Type -->
+        <div class="card-title"><span class="dot"></span>Vehicle Type</div>
+        <div class="vtype-strip" id="vtypeStrip">
+          <div class="vtype-chip selected" data-type="scooter" data-cons-min="30" data-cons-max="40" data-tank="4.5">
+            <span class="chip-icon">🛵</span>
+            <span class="chip-label">Scooter</span>
+            <span class="chip-sub">30–40 km/L</span>
+          </div>
+          <div class="vtype-chip" data-type="underbone" data-cons-min="35" data-cons-max="50" data-tank="3.7">
+            <span class="chip-icon">🏍️</span>
+            <span class="chip-label">Underbone</span>
+            <span class="chip-sub">35–50 km/L</span>
+          </div>
+          <div class="vtype-chip" data-type="bigbike" data-cons-min="14" data-cons-max="22" data-tank="17">
+            <span class="chip-icon">🏎️</span>
+            <span class="chip-label">Big Bike</span>
+            <span class="chip-sub">14–22 km/L</span>
+          </div>
+          <div class="vtype-chip" data-type="sedan" data-cons-min="10" data-cons-max="14" data-tank="42">
+            <span class="chip-icon">🚗</span>
+            <span class="chip-label">Sedan / HB</span>
+            <span class="chip-sub">10–14 km/L</span>
+          </div>
+          <div class="vtype-chip" data-type="suv" data-cons-min="7" data-cons-max="11" data-tank="60">
+            <span class="chip-icon">🚙</span>
+            <span class="chip-label">SUV / MPV</span>
+            <span class="chip-sub">7–11 km/L</span>
+          </div>
+          <div class="vtype-chip" data-type="pickup" data-cons-min="7" data-cons-max="10" data-tank="75">
+            <span class="chip-icon">🛻</span>
+            <span class="chip-label">Pickup</span>
+            <span class="chip-sub">7–10 km/L</span>
+          </div>
+          <div class="vtype-chip" data-type="custom" data-cons-min="" data-cons-max="" data-tank="">
+            <span class="chip-icon">✏️</span>
+            <span class="chip-label">Custom</span>
+            <span class="chip-sub">Enter below</span>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Consumption Range -->
+        <div class="card-title"><span class="dot"></span>Fuel Consumption (km/L)</div>
+        <div class="range-group" id="consRangeGroup">
+          <div class="range-label-row">
+            <label>Min — Max Range</label>
+            <span class="range-value-badge" id="consRangeBadge">30 – 40 km/L</span>
+          </div>
+          <div class="range-inputs-row">
+            <div class="input-wrap has-suffix">
+              <input type="number" id="consMin" value="30" min="1" max="80" step="0.5" placeholder="Min" oninput="syncConsRange()">
+              <span class="suffix">min</span>
+            </div>
+            <span class="range-sep">–</span>
+            <div class="input-wrap has-suffix">
+              <input type="number" id="consMax" value="40" min="1" max="80" step="0.5" placeholder="Max" oninput="syncConsRange()">
+              <span class="suffix">max</span>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--text3);line-height:1.5;margin-top:-2px">💡 Check your vehicle manual or use real-world figures. City driving tends toward the lower end.</p>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Fuel Price -->
+        <div class="card-title"><span class="dot"></span>Fuel Price (₱/L)</div>
+        <div class="fuel-strip" id="fuelStrip">
+          <div class="fuel-chip" data-price="89.70" data-type="RON 95">
+            <div class="chip-name">RON 95</div><div class="chip-price">₱89.70</div>
+          </div>
+          <div class="fuel-chip" data-price="83.60" data-type="RON 91">
+            <div class="chip-name">RON 91</div><div class="chip-price">₱83.60</div>
+          </div>
+          <div class="fuel-chip" data-price="96.30" data-type="Diesel">
+            <div class="chip-name">Diesel</div><div class="chip-price">₱96.30</div>
+          </div>
+          <div class="fuel-chip selected" data-price="0" data-type="Custom">
+            <div class="chip-name">Custom</div><div class="chip-price" id="customFuelLabel">₱ —</div>
+          </div>
+        </div>
+        <div class="field" id="customFuelField" style="display:block;margin-top:12px">
+          <label>Custom Price (₱/L)</label>
+          <div class="input-wrap has-prefix">
+            <span class="prefix">₱</span>
+            <input type="number" id="customFuelPrice" placeholder="Enter actual pump price" min="0" step="0.10" oninput="onCustomFuelInput()">
+          </div>
+        </div>
+        <p style="font-size:11px;color:#ff8c42;margin-top:8px;line-height:1.5;background:rgba(255,140,66,.08);border:1px solid rgba(255,140,66,.2);border-radius:8px;padding:8px 10px">⚠️ <strong>March 17–23 DOE hike in effect.</strong> Diesel ₱96–113/L · RON 95 ₱83–98/L depending on brand. Use Custom and enter what you actually paid.</p>
+
+        <div class="divider"></div>
+
+        <!-- Tank Size -->
+        <div class="card-title"><span class="dot"></span>Tank Size (optional)</div>
+        <div class="field" style="margin-bottom:0">
+          <label>Tank Capacity</label>
+          <div class="input-wrap has-suffix">
+            <input type="number" id="tankSize" placeholder="e.g. 4.5" min="0.5" max="150" step="0.5">
+            <span class="suffix">liters</span>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:6px;line-height:1.5">Optional — enables full-tank range and per-peso analysis.</p>
+
+        <button class="btn" onclick="calculate()">📏 &nbsp;Calculate Range</button>
+      </div>
+    </div>
+
+    <!-- ── RIGHT: RESULTS ── -->
+    <div>
+      <div class="result-panel" id="resultPanel">
+
+        <!-- Hero: range band -->
+        <div class="result-hero fade-in">
+          <div class="result-label">Estimated Range per Liter</div>
+          <div class="range-bar-labels" style="margin-bottom:6px">
+            <div class="range-bar-val">
+              <div class="km-val" id="kmMin">—</div>
+              <div class="km-unit">km (eco)</div>
+            </div>
+            <div class="range-bar-center">
+              <span class="mid-tilde">~</span>
+              <span class="mid-label">to</span>
+            </div>
+            <div class="range-bar-val" style="text-align:right">
+              <div class="km-val" id="kmMax">—</div>
+              <div class="km-unit">km (max)</div>
+            </div>
+          </div>
+          <div class="range-bar-wrap">
+            <div class="range-bar-track">
+              <div class="range-bar-fill" id="rangeBarFill" style="left:0%;width:0%"></div>
+            </div>
+          </div>
+          <div style="text-align:center;margin-top:8px">
+            <span style="font-size:12px;color:var(--text3)">per liter · <span id="heroFuelLabel">RON 95 @ ₱67.20/L</span></span>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row fade-in">
+          <div class="stat-box">
+            <div class="stat-val" id="sCostPerKm">—</div>
+            <div class="stat-lbl">₱ / km</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="sKmPerPeso">—</div>
+            <div class="stat-lbl">km / ₱1</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="sCostPer100">—</div>
+            <div class="stat-lbl">₱ / 100km</div>
+          </div>
+        </div>
+
+        <!-- Full tank section (if tank size given) -->
+        <div id="tankSection" style="display:none" class="fade-in">
+          <div class="result-hero" style="background:linear-gradient(135deg,#0d1a2a 0%,#0f1f35 100%);border-color:rgba(255,119,61,.2)">
+            <div class="result-label" style="color:var(--accent)">Full Tank Range</div>
+            <div class="range-bar-labels" style="margin-bottom:6px">
+              <div class="range-bar-val">
+                <div class="km-val" id="tankKmMin" style="color:var(--accent)">—</div>
+                <div class="km-unit">km (eco)</div>
+              </div>
+              <div class="range-bar-center">
+                <span class="mid-tilde" style="color:var(--text3)">~</span>
+                <span class="mid-label">to</span>
+              </div>
+              <div class="range-bar-val" style="text-align:right">
+                <div class="km-val" id="tankKmMax" style="color:var(--accent)">—</div>
+                <div class="km-unit">km (max)</div>
+              </div>
+            </div>
+            <div class="range-bar-wrap">
+              <div class="range-bar-track">
+                <div class="range-bar-fill" id="tankBarFill" style="left:0%;width:100%;background:linear-gradient(90deg,var(--accent2),var(--accent))"></div>
+              </div>
+            </div>
+            <div style="text-align:center;margin-top:8px">
+              <span style="font-size:12px;color:var(--text3)"><span id="tankSizeLabel">—</span>L tank · full fill = <span id="tankFillCost" style="color:var(--accent);font-weight:600">₱—</span></span>
+            </div>
+          </div>
+          <!-- Budget scenarios -->
+          <div class="scenarios-card fade-in">
+            <div class="scenarios-title">
+              <span>📊 Budget → Range</span>
+              <span style="font-size:10px;color:var(--text3)">How far per ₱ spent</span>
+            </div>
+            <div id="scenariosList"></div>
+          </div>
+        </div>
+
+          <div class="zones-card fade-in">
+          <div class="zones-title">Efficiency Zones</div>
+          <div class="zone-row">
+            <div class="zone-dot" style="background:#ff773d"></div>
+            <div class="zone-label" id="zoneLabelGreat">Great (35+ km/L)</div>
+            <div class="zone-bar-wrap"><div class="zone-bar" id="zoneGreat" style="background:#ff773d;width:0%"></div></div>
+            <div class="zone-val" id="zoneGreatLabel">—</div>
+          </div>
+          <div class="zone-row">
+            <div class="zone-dot" style="background:#f0c040"></div>
+            <div class="zone-label" id="zoneLabelAvg">Average (25–35)</div>
+            <div class="zone-bar-wrap"><div class="zone-bar" id="zoneAvg" style="background:#f0c040;width:0%"></div></div>
+            <div class="zone-val" id="zoneAvgLabel">—</div>
+          </div>
+          <div class="zone-row">
+            <div class="zone-dot" style="background:#ff5a5a"></div>
+            <div class="zone-label" id="zoneLabelLow">Low (&lt;25 km/L)</div>
+            <div class="zone-bar-wrap"><div class="zone-bar" id="zoneLow" style="background:#ff5a5a;width:0%"></div></div>
+            <div class="zone-val" id="zoneLowLabel">—</div>
+          </div>
+        </div>
+
+        <div class="tip-card fade-in">
+          <div class="tip-icon">💡</div>
+          <div class="tip-text" id="tipText">—</div>
+        </div>
+      </div>
+
+      <!-- Placeholder before calc -->
+      <div id="resultPlaceholder" class="card">
+        <div style="font-size:44px;margin-bottom:12px;opacity:.2">📏</div>
+        <div style="font-size:14px;color:var(--text2);font-weight:300;line-height:1.65">Choose your vehicle type, set fuel price and consumption range, then tap <strong style="color:var(--text);font-weight:500">Calculate Range</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let fuelPrice = 0;
+let fuelType  = 'Custom';
+let vehicleType = 'scooter';
+
+// ── Vehicle type chips ──────────────────────────────────────
+document.getElementById('vtypeStrip').addEventListener('click', e => {
+  const chip = e.target.closest('.vtype-chip');
+  if (!chip) return;
+  document.querySelectorAll('.vtype-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  vehicleType = chip.dataset.type;
+  const min = chip.dataset.consMin;
+  const max = chip.dataset.consMax;
+  const tank = chip.dataset.tank;
+  if (min && max) {
+    document.getElementById('consMin').value = min;
+    document.getElementById('consMax').value = max;
+    syncConsRange();
+  }
+  if (tank) {
+    document.getElementById('tankSize').value = tank;
+  } else {
+    document.getElementById('tankSize').value = '';
+  }
+});
+
+// ── Consumption range sync ──────────────────────────────────
+function syncConsRange() {
+  const min = parseFloat(document.getElementById('consMin').value) || 0;
+  const max = parseFloat(document.getElementById('consMax').value) || 0;
+  document.getElementById('consRangeBadge').textContent = `${min} – ${max} km/L`;
+}
+
+// ── Fuel chips ─────────────────────────────────────────────
+document.getElementById('fuelStrip').addEventListener('click', e => {
+  const chip = e.target.closest('.fuel-chip'); if (!chip) return;
+  document.querySelectorAll('.fuel-chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  fuelType = chip.dataset.type;
+  if (fuelType === 'Custom') {
+    document.getElementById('customFuelField').style.display = '';
+    fuelPrice = parseFloat(document.getElementById('customFuelPrice').value) || 0;
+  } else {
+    document.getElementById('customFuelField').style.display = 'none';
+    fuelPrice = parseFloat(chip.dataset.price);
+  }
+});
+
+// Show custom fuel field on load since Custom is default — already display:block in HTML
+
+function onCustomFuelInput() {
+  fuelPrice = parseFloat(document.getElementById('customFuelPrice').value) || 0;
+  document.getElementById('customFuelLabel').textContent = fuelPrice ? `₱${fuelPrice.toFixed(2)}` : '₱ —';
+}
+
+// ── Animate number ─────────────────────────────────────────
+function animNum(id, target, dec, prefix) {
+  const el = document.getElementById(id);
+  const dur = 650, t0 = performance.now();
+  const pref = prefix || '';
+  (function step(now) {
+    const t = Math.min((now - t0) / dur, 1);
+    const e = 1 - Math.pow(1 - t, 3);
+    el.textContent = pref + (target * e).toFixed(dec);
+    if (t < 1) requestAnimationFrame(step);
+    else el.textContent = pref + target.toFixed(dec);
+  })(performance.now());
+}
+
+function shake(id) {
+  const el = document.getElementById(id);
+  el.style.animation = 'none'; el.offsetHeight;
+  el.style.animation = 'shake .3s ease'; el.focus();
+}
+
+// ── Calculate ─────────────────────────────────────────────
+function calculate() {
+  const consMin = parseFloat(document.getElementById('consMin').value);
+  const consMax = parseFloat(document.getElementById('consMax').value);
+  const tank    = parseFloat(document.getElementById('tankSize').value);
+
+  if (!consMin || consMin <= 0) { shake('consMin'); return; }
+  if (!consMax || consMax <= 0) { shake('consMax'); return; }
+  if (!fuelPrice || fuelPrice <= 0) { alert('Please select or enter a fuel price.'); return; }
+
+  const lo = Math.min(consMin, consMax);
+  const hi = Math.max(consMin, consMax);
+
+  // per-liter km
+  const kmLo = lo; // km per liter at min efficiency
+  const kmHi = hi; // km per liter at max efficiency
+
+  // cost per km
+  const costPerKmHi = fuelPrice / lo; // worst (more cost per km)
+  const costPerKmLo = fuelPrice / hi; // best
+  const avgCostPerKm = (costPerKmLo + costPerKmHi) / 2;
+
+  const kmPerPeso  = ((lo + hi) / 2) / fuelPrice; // avg km per ₱1
+  const costPer100 = avgCostPerKm * 100;
+
+  // Show result panel
+  document.getElementById('resultPlaceholder').style.display = 'none';
+  document.getElementById('resultPanel').classList.add('on');
+
+  // Animate km values
+  animNum('kmMin', kmLo, 1);
+  animNum('kmMax', kmHi, 1);
+
+  // Range bar (represent lo/hi as percent of 0–50km/L scale)
+  const scale = 50;
+  const barLeft  = (kmLo / scale) * 100;
+  const barWidth = ((kmHi - kmLo) / scale) * 100;
+  setTimeout(() => {
+    document.getElementById('rangeBarFill').style.left  = Math.min(barLeft, 90) + '%';
+    document.getElementById('rangeBarFill').style.width = Math.max(barWidth, 5) + '%';
+  }, 80);
+
+  document.getElementById('heroFuelLabel').textContent = `${fuelType} @ ₱${fuelPrice.toFixed(2)}/L`;
+
+  // Stats
+  animNum('sCostPerKm', avgCostPerKm, 2, '₱');
+  animNum('sKmPerPeso', kmPerPeso, 2);
+  animNum('sCostPer100', costPer100, 0, '₱');
+
+  // Efficiency zones — thresholds adapt to vehicle type
+  const avgKmL = (lo + hi) / 2;
+  // Per-vehicle "great" and "avg" thresholds
+  const thresholds = {
+    scooter:   { great: 35, avg: 25 },
+    underbone: { great: 40, avg: 30 },
+    bigbike:   { great: 20, avg: 14 },
+    sedan:     { great: 14, avg: 10 },
+    suv:       { great: 11, avg:  8 },
+    pickup:    { great: 10, avg:  7 },
+    custom:    { great: 20, avg: 12 },
+  };
+  const th = thresholds[vehicleType] || thresholds.custom;
+  const great = Math.min(100, (avgKmL / th.great) * 100);
+  const avg   = avgKmL >= th.avg ? Math.min(100, ((avgKmL - th.avg) / (th.great - th.avg)) * 100) : 0;
+  const low   = avgKmL < th.avg ? ((th.avg - avgKmL) / th.avg * 100) : 0;
+  document.getElementById('zoneLabelGreat').textContent = `Great (${th.great}+ km/L)`;
+  document.getElementById('zoneLabelAvg').textContent   = `Average (${th.avg}–${th.great})`;
+  document.getElementById('zoneLabelLow').textContent   = `Low (<${th.avg} km/L)`;
+  setTimeout(() => {
+    document.getElementById('zoneGreat').style.width = great + '%';
+    document.getElementById('zoneAvg').style.width   = avg   + '%';
+    document.getElementById('zoneLow').style.width   = low   + '%';
+  }, 100);
+  document.getElementById('zoneGreatLabel').textContent = avgKmL >= th.great ? '✓' : '—';
+  document.getElementById('zoneAvgLabel').textContent   = (avgKmL >= th.avg && avgKmL < th.great) ? '✓' : '—';
+  document.getElementById('zoneLowLabel').textContent   = avgKmL < th.avg ? '!' : '—';
+
+  // Tank section
+  if (tank && tank > 0) {
+    document.getElementById('tankSection').style.display = '';
+    const tkKmLo = lo * tank;
+    const tkKmHi = hi * tank;
+    const tkCost = tank * fuelPrice;
+    animNum('tankKmMin', tkKmLo, 0);
+    animNum('tankKmMax', tkKmHi, 0);
+    document.getElementById('tankSizeLabel').textContent = tank.toFixed(1);
+    document.getElementById('tankFillCost').textContent = '₱' + tkCost.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Budget scenarios
+    const budgets = [100, 200, 300, 500, 1000];
+    document.getElementById('scenariosList').innerHTML = budgets.map(b => {
+      const liters = b / fuelPrice;
+      const bKmLo = (lo * liters).toFixed(0);
+      const bKmHi = (hi * liters).toFixed(0);
+      return `<div class="sc-row">
+        <div class="sc-left">
+          <span class="sc-budget">₱${b.toLocaleString()}</span>
+          <span class="sc-label">${liters.toFixed(2)}L of ${fuelType}</span>
+        </div>
+        <span class="sc-km">${bKmLo}–${bKmHi} km</span>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('tankSection').style.display = 'none';
+  }
+
+  setTip(lo, hi, fuelPrice, avgCostPerKm);
+}
+
+function setTip(lo, hi, price, costPerKm) {
+  const avg = (lo + hi) / 2;
+  const dailyCommute50 = (costPerKm * 50).toFixed(0);
+  const vehicleTips = {
+    scooter: [
+      [() => avg >= 38, `<strong>Exceptional scooter efficiency!</strong> ${avg.toFixed(0)} km/L is top-tier for a scooter. Keep tires at 30–32 PSI and service the CVT belt every 20,000 km.`],
+      [() => avg >= 30, `<strong>Great numbers.</strong> ${avg.toFixed(0)} km/L is above average for Metro Manila. Smooth throttle on EDSA and avoiding hard stops will push you toward the max.`],
+      [() => avg >= 22, `<strong>Normal city range.</strong> ${avg.toFixed(0)} km/L is typical for a scooter in heavy traffic. Try coasting to stops instead of braking hard.`],
+      [() => true,      `<strong>Below average for a scooter.</strong> Check CVT roller weights, air filter, and tire pressure — these three cause most efficiency losses.`],
+    ],
+    underbone: [
+      [() => avg >= 45, `<strong>World-class efficiency.</strong> ${avg.toFixed(0)} km/L puts your underbone among the most fuel-efficient vehicles on PH roads. Legendary Honda Wave territory.`],
+      [() => avg >= 35, `<strong>Great underbone efficiency.</strong> ${avg.toFixed(0)} km/L — clean air filter and fresh spark plug make the biggest difference here.`],
+      [() => true,      `<strong>Check the basics.</strong> A well-tuned underbone should hit 35+ km/L. Air filter, spark plug, and chain tension are the usual suspects.`],
+    ],
+    bigbike: [
+      [() => avg >= 20, `<strong>Efficient for a big bike.</strong> ${avg.toFixed(0)} km/L is great — sport-touring bikes with proper gearing hit this on the expressway.`],
+      [() => avg >= 15, `<strong>Typical big bike range.</strong> ${avg.toFixed(0)} km/L is normal. SLEX/NLEX cruising at 100 km/h will be more efficient than city stop-and-go.`],
+      [() => true,      `<strong>Thirsty ride.</strong> At ${avg.toFixed(0)} km/L, a full day of city riding gets expensive fast — consider the expressway if your route allows it.`],
+    ],
+    sedan: [
+      [() => avg >= 13, `<strong>Efficient sedan.</strong> ${avg.toFixed(0)} km/L is excellent for a car in Metro Manila. Modern hybrid or well-tuned naturally aspirated engine.`],
+      [() => avg >= 10, `<strong>Average sedan fuel economy.</strong> ${avg.toFixed(0)} km/L is normal. City AC use costs roughly 1–2 km/L — turn it off when parked.`],
+      [() => true,      `<strong>Below average for a car.</strong> Check tire pressure (32–35 PSI), air filter, and consider an engine decarbonization service.`],
+    ],
+    suv: [
+      [() => avg >= 10, `<strong>Good for an SUV.</strong> ${avg.toFixed(0)} km/L shows your driving style is efficient — steady highway speeds make a big difference.`],
+      [() => avg >= 8,  `<strong>Normal SUV range.</strong> ${avg.toFixed(0)} km/L with full AC in PH traffic is expected. A 50 km daily commute costs ~₱${dailyCommute50}/day.`],
+      [() => true,      `<strong>High fuel cost alert.</strong> ₱${costPerKm.toFixed(2)}/km adds up — check tire pressure, air filter, and whether the A/C compressor is overworking.`],
+    ],
+    pickup: [
+      [() => avg >= 9,  `<strong>Efficient pickup numbers.</strong> ${avg.toFixed(0)} km/L is solid for a diesel pickup — proper wheel alignment and clean fuel filter help.`],
+      [() => avg >= 7,  `<strong>Typical pickup range.</strong> ${avg.toFixed(0)} km/L is normal. Diesel pickups reward highway driving significantly more than city use.`],
+      [() => true,      `<strong>Diesel usage alert.</strong> At ${avg.toFixed(0)} km/L, check for clogged fuel injectors or dirty air filter — big gains possible from a service.`],
+    ],
+    custom: [
+      [() => costPerKm > 12, `<strong>High cost per km.</strong> At ₱${costPerKm.toFixed(2)}/km, a 50 km daily commute costs ~₱${dailyCommute50}/day. Consider if the route can be optimized.`],
+      [() => avg >= 25, `<strong>Good efficiency.</strong> ${avg.toFixed(0)} km/L — you're spending fuel wisely.`],
+      [() => true,      `<strong>Tip:</strong> The gap between min and max reflects real-world vs. ideal conditions. City traffic, AC use, and load all push toward the lower figure.`],
+    ],
+  };
+  const tipSet = vehicleTips[vehicleType] || vehicleTips.custom;
+  for (const [cond, text] of tipSet) {
+    if (cond()) { document.getElementById('tipText').innerHTML = text; return; }
+  }
+}
+
+// ── Init: pre-sync badge ───────────────────────────────────
+syncConsRange();
+</script>
+</body>
+</html>

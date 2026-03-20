@@ -1,0 +1,105 @@
+
+- calculator 
+- estimated fuel cost (philippine pesos)
+- distance duration
+- fuel consumption
+
+we need (vehicle type, fuel/liter (diesel viceversa), start location, end location)
+
+"
+1. GasGuard – Real-Time Fuel Price Transparency App
+
+Problem: Gas stations sometimes update prices differently or drivers don’t know where the cheapest fuel is.
+
+Solution:
+An app that shows real-time fuel prices from nearby gas stations.
+
+Features
+
+📍 Map showing nearby gas stations
+
+💰 Real-time price comparison
+
+📊 Weekly price trend prediction
+
+🚗 Route planner showing cheapest fuel stop
+
+👥 Crowd-sourced price updates from users
+
+
+4. Fuel Impact Calculator
+
+Problem: People don’t realize how oil price hikes affect their daily expenses.
+
+Solution:
+A tool that calculates how gas price increases affect your monthly budget.
+
+User inputs:
+
+Motorcycle or car
+
+Distance per day
+
+Fuel consumption
+
+Output:
+
+Monthly fuel spending
+
+Impact of price hikes
+
+Suggestions to save fuel
+
+Example:
+
+Gas price: ₱65 → ₱70
+
+Daily commute: 20km
+
+Result:
+Monthly cost increase: ₱650
+
+6. Smart Route Fuel Saver
+
+Problem: Drivers waste fuel in traffic.
+
+Solution:
+An app that finds fuel-efficient routes, not just the fastest route.
+
+Uses:
+
+Traffic
+
+Stop frequency
+
+Elevation
+
+Fuel consumption model
+
+Goal: Reduce fuel usage.
+
+💡 My TOP recommendation for a hackathon winner:
+
+“GasGuard + AI Prediction”
+
+Combine:
+
+1️⃣ Fuel price map
+2️⃣ Crowd-sourced gas price updates
+3️⃣ AI predicting next price hike
+4️⃣ Notifications before price increase
+
+
+
+
+
+
+vehicle type done
+
+- improvements
+
+- water restriction (lets say motor from ph he cant cross up to davao cause theres water, add a popup alert)
+- tips and tricks (para mas maka save fuel)
+- more summary information (add more related stuff) 
+- on google maps choose if 2 wheeler based on model of vehicle (viceversa) (lets say honda click chinoose ko, if i open the google maps btn over there the google maps should use motorcyle as an example vehicle not a car)
+- travel options (provide ways on how u can get there most efficient, give 3 routes on the map and he can choose any route )
