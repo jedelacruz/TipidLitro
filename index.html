@@ -1,0 +1,1529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuelito — Trip Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0b0f0e;--surface:#131918;--surface2:#1a2120;--border:#243130;
+  --accent:#00e5a0;--accent2:#00b87a;--accent-dim:rgba(0,229,160,.12);
+  --text:#e8f0ef;--text2:#8fa8a4;--text3:#506663;
+  --red:#ff5a5a;--yellow-dim:rgba(240,192,64,.15);--yellow:#f0c040;
+  --blue:#4db8ff;--blue-dim:rgba(77,184,255,.12);
+  --orange:#ff8c42;--orange-dim:rgba(255,140,66,.12);
+  --radius:16px;--radius-sm:10px;--tr:.18s cubic-bezier(.4,0,.2,1);
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;
+  --page-max:1160px;--input-h:44px;--btn-primary-h:50px;--focus-ring:0 0 0 3px var(--accent-dim);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:.45}
+.blob{position:fixed;border-radius:50%;filter:blur(120px);pointer-events:none;z-index:0}
+.blob-1{width:500px;height:500px;background:rgba(0,229,160,.06);top:-200px;right:-100px}
+.blob-2{width:350px;height:350px;background:rgba(0,229,160,.04);bottom:0;left:-100px}
+
+.app{position:relative;z-index:1;max-width:var(--page-max);margin:0 auto;padding:0 16px 60px}
+@media(min-width:480px){.app{padding:0 20px 80px}}
+@media(min-width:768px){.app{padding:0 28px 80px}}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 0 32px;gap:12px}
+@media(min-width:480px){header{padding:28px 0 40px}}
+.logo{display:flex;align-items:center;gap:9px;font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--text);text-decoration:none;letter-spacing:-.5px;flex-shrink:0}
+@media(min-width:480px){.logo{font-size:22px}}
+.logo-icon{width:34px;height:34px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.logo span{color:var(--accent)}
+.badge{font-size:11px;font-weight:500;padding:5px 11px;border-radius:100px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(0,229,160,.2);white-space:nowrap}
+
+.hero{margin-bottom:28px}
+@media(min-width:480px){.hero{margin-bottom:36px}}
+.hero-label{font-size:11px;font-weight:500;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.hero-label::before{content:'';display:inline-block;width:18px;height:2px;background:var(--accent);border-radius:2px}
+.hero h1{font-family:var(--font-display);font-size:clamp(26px,7vw,50px);font-weight:800;line-height:1.08;letter-spacing:-1.5px;margin-bottom:10px}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero p{font-size:14px;color:var(--text2);line-height:1.65;max-width:520px;font-weight:300;margin-bottom:12px}
+@media(min-width:480px){.hero p{font-size:15px}}
+.hero-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hero-meta-item{font-size:12px;color:var(--text3);font-weight:400}
+@media(min-width:480px){.hero-meta-item{font-size:13px}}
+.hero-meta-dot{color:var(--border);font-size:13px}
+
+/* ── MODAL OVERLAY ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s ease;backdrop-filter:blur(4px)}
+.modal-overlay.show{opacity:1;pointer-events:all}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);max-width:480px;width:100%;padding:28px 24px;position:relative;transform:translateY(20px) scale(.97);transition:transform .25s ease;max-height:90vh;overflow-y:auto}
+.modal-overlay.show .modal-box{transform:translateY(0) scale(1)}
+.modal-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all var(--tr)}
+.modal-close:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.modal-icon{font-size:40px;margin-bottom:14px;display:block;text-align:center}
+.modal-title{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px;text-align:center}
+.modal-subtitle{font-size:13px;color:var(--text2);text-align:center;line-height:1.6;margin-bottom:20px}
+.modal-section{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:10px}
+.modal-section-title{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.modal-list{list-style:none;display:flex;flex-direction:column;gap:6px}
+.modal-list li{font-size:13px;color:var(--text2);display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.modal-list li::before{content:'→';color:var(--accent);flex-shrink:0;margin-top:1px}
+.modal-warning{background:rgba(255,90,90,.08);border:1px solid rgba(255,90,90,.2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;align-items:flex-start}
+.modal-warning-text{font-size:13px;color:#ffb3b3;line-height:1.55}
+.modal-warning-text strong{color:var(--red)}
+.modal-btn{width:100%;height:var(--input-h);background:var(--accent);color:#0b0f0e;border:none;border-radius:var(--radius-sm);font-family:var(--font-display);font-size:14px;font-weight:700;cursor:pointer;transition:all var(--tr);margin-top:8px}
+.modal-btn:hover{opacity:.88}
+.modal-btn.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.modal-btn.secondary:hover{border-color:var(--accent2);color:var(--accent)}
+
+/* ── TIPS MODAL ── */
+.tip-grid{display:grid;gap:8px}
+.tip-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;display:flex;gap:10px;align-items:flex-start}
+.tip-badge{width:32px;height:32px;border-radius:8px;background:var(--yellow-dim);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.tip-content{}
+.tip-head{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+.tip-body{font-size:12px;color:var(--text3);line-height:1.5}
+.tip-savings{display:inline-block;font-size:10px;font-weight:700;color:var(--accent);background:var(--accent-dim);border-radius:100px;padding:2px 8px;margin-top:4px}
+
+/* ── ROUTES PANEL ── */
+.routes-panel{display:none;margin-top:0}
+.routes-panel.on{display:block}
+.route-tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.route-tab{font-size:11px;font-weight:600;padding:7px 12px;border-radius:100px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);cursor:pointer;transition:all var(--tr);display:flex;align-items:center;gap:5px;min-height:34px;font-family:var(--font-body);white-space:nowrap}
+.route-tab.active{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+.route-tab:hover:not(.active){border-color:var(--accent2);color:var(--accent)}
+.route-info-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.route-badge{font-size:10px;font-weight:700;padding:3px 8px;border-radius:100px;background:var(--accent-dim);color:var(--accent);border:1px solid rgba(0,229,160,.2);white-space:nowrap}
+.route-badge.alt{background:var(--blue-dim);color:var(--blue);border-color:rgba(77,184,255,.2)}
+.route-badge.scenic{background:var(--orange-dim);color:var(--orange);border-color:rgba(255,140,66,.2)}
+.route-stats{display:flex;gap:14px;flex-wrap:wrap}
+.route-stat{font-size:12px;color:var(--text2)}
+.route-stat strong{color:var(--text);font-weight:600}
+.route-desc{font-size:12px;color:var(--text3);width:100%;line-height:1.5}
+
+/* ── MAP CARD ── */
+.map-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px}
+@media(min-width:480px){.map-card{margin-bottom:24px}}
+.map-header{padding:14px 16px 12px;border-bottom:1px solid var(--border)}
+@media(min-width:480px){.map-header{padding:16px 20px 14px}}
+.map-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap}
+.map-title{font-family:var(--font-display);font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.map-title .dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.map-actions{display:flex;gap:6px;flex-wrap:wrap}
+@media(min-width:400px){.map-actions{gap:8px}}
+.map-btn{font-size:11px;font-weight:500;color:var(--accent);background:var(--accent-dim);border:1px solid rgba(0,229,160,.2);border-radius:100px;padding:6px 11px;cursor:pointer;font-family:var(--font-body);transition:all var(--tr);display:flex;align-items:center;gap:4px;white-space:nowrap;min-height:34px;-webkit-tap-highlight-color:transparent}
+@media(min-width:480px){.map-btn{font-size:12px;padding:5px 12px}}
+.map-btn:hover{background:rgba(0,229,160,.2)}
+.map-btn:active{opacity:.8}
+.map-btn.secondary{color:var(--text2);background:var(--surface2);border-color:var(--border)}
+.map-btn.secondary:hover{border-color:var(--accent2);color:var(--accent)}
+.map-inputs{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:10px}
+@media(min-width:540px){.map-inputs{grid-template-columns:1fr 1fr}}
+.loc-group{position:relative;z-index:10}
+.loc-group:focus-within{z-index:400}
+.loc-group label{display:block;font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.loc-input-row{position:relative}
+.loc-input-row input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px 38px 11px 13px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;transition:border-color var(--tr),box-shadow var(--tr);-webkit-appearance:none;height:var(--input-h)}
+.loc-input-row input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent-dim)}
+.loc-input-row input::placeholder{color:var(--text3)}
+.loc-ico{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:14px;pointer-events:none}
+.loc-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1c2724;border:1px solid var(--border);border-radius:var(--radius-sm);z-index:400;display:none;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.7);max-height:200px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.loc-dropdown.open{display:block}
+.loc-dd-item{padding:10px 14px;font-size:13px;color:var(--text);cursor:pointer;transition:background var(--tr);display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(255,255,255,.03);min-height:var(--input-h)}
+.loc-dd-item:last-child{border-bottom:none}
+.loc-dd-item:hover,.loc-dd-item:active{background:var(--accent-dim)}
+.loc-dd-icon{font-size:13px;flex-shrink:0;margin-top:2px;opacity:.7}
+.loc-dd-text{display:flex;flex-direction:column;gap:1px}
+.loc-dd-main{font-size:13px;color:var(--text);line-height:1.3}
+.loc-dd-sub{font-size:11px;color:var(--text3)}
+.loc-dd-loader{padding:14px;text-align:center;font-size:12px;color:var(--text3)}
+.loc-dd-more{padding:8px 14px;font-size:11px;color:var(--text3);display:flex;align-items:center;gap:6px;border-top:1px solid rgba(255,255,255,.04)}
+.map-route-btn{width:100%;padding:11px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text2);cursor:pointer;transition:all var(--tr);display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.04em;min-height:var(--input-h);-webkit-tap-highlight-color:transparent}
+.map-route-btn:hover{border-color:var(--accent2);color:var(--accent);background:var(--accent-dim)}
+.map-route-btn:active{opacity:.8}
+.map-route-btn:disabled{opacity:.5;cursor:not-allowed}
+#mapWrap{height:clamp(220px,34vw,440px)}
+.map-dist-strip{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);background:rgba(0,229,160,.03);gap:12px;flex-wrap:wrap}
+@media(min-width:480px){.map-dist-strip{padding:13px 20px;flex-wrap:nowrap}}
+.map-dist-left{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.map-dist-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+.map-dist-value{font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--accent)}
+@media(min-width:480px){.map-dist-value{font-size:22px}}
+.map-dist-sub{font-size:10px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.map-dist-right{display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap}
+.use-dist-btn{font-size:12px;font-weight:700;color:#0b0f0e;background:var(--accent);border:none;border-radius:8px;padding:10px 14px;cursor:pointer;font-family:var(--font-display);transition:all var(--tr);letter-spacing:.02em;min-height:40px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+@media(min-width:480px){.use-dist-btn{padding:9px 16px}}
+.use-dist-btn:hover{opacity:.85}
+.use-dist-btn:active{opacity:.7}
+.use-dist-btn:disabled{opacity:.3;cursor:not-allowed;background:var(--text3)}
+.gmaps-btn{font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;cursor:pointer;font-family:var(--font-body);transition:all var(--tr);white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:5px;min-height:40px}
+.gmaps-btn:hover{border-color:var(--accent2);color:var(--accent)}
+
+/* ── GRID ── */
+.grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
+@media(min-width:860px){.grid{grid-template-columns:1fr 390px;gap:24px}}
+
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;position:relative}
+@media(min-width:480px){.card{padding:22px 20px}}
+@media(min-width:768px){.card{padding:24px}}
+.card::before{content:'';position:absolute;inset:0;border-radius:var(--radius);background:linear-gradient(135deg,rgba(0,229,160,.03) 0%,transparent 60%);pointer-events:none}
+.card-title{font-family:var(--font-display);font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.card-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title-row .card-title{margin-bottom:0}
+.tips-btn{font-size:11px;font-weight:600;color:var(--yellow);background:var(--yellow-dim);border:1px solid rgba(240,192,64,.2);border-radius:100px;padding:4px 10px;cursor:pointer;font-family:var(--font-body);transition:all var(--tr);display:flex;align-items:center;gap:4px}
+.tips-btn:hover{background:rgba(240,192,64,.25)}
+
+/* ── FIELDS ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--text2);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}
+.field-row{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px}
+@media(min-width:380px){.field-row{grid-template-columns:1fr 1fr}}
+.field-row .field{margin-bottom:0}
+
+/* ── INPUTS ── */
+.input-wrap{position:relative;display:flex;align-items:center}
+.input-wrap .prefix{position:absolute;left:12px;font-size:12px;color:var(--text3);pointer-events:none;font-weight:500;white-space:nowrap;line-height:1}
+input,select{width:100%;height:var(--input-h);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 14px;font-family:var(--font-body);font-size:14px;color:var(--text);outline:none;transition:border-color var(--tr),box-shadow var(--tr);-webkit-appearance:none;appearance:none;display:block}
+.input-wrap.has-prefix input{padding-left:50px}
+input:focus,select:focus{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent-dim)}
+input::placeholder{color:var(--text3)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23506663' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;padding-right:36px;cursor:pointer}
+select option{background:#1a2120}
+.divider{height:1px;background:var(--border);margin:16px 0}
+@media(min-width:480px){.divider{margin:18px 0}}
+
+/* ── VEHICLE SEARCH ── */
+.vsearch-wrap{position:relative;z-index:100}
+.vsearch-wrap:focus-within{z-index:500}
+.vdropdown{position:absolute;top:calc(100% + 5px);left:0;right:0;background:#1a2522;border:1px solid var(--border);border-radius:var(--radius-sm);max-height:250px;overflow-y:auto;z-index:500;display:none;scrollbar-width:thin;scrollbar-color:var(--border) transparent;box-shadow:0 16px 48px rgba(0,0,0,.8)}
+.vdropdown.open{display:block}
+.vdd-item{padding:11px 14px;cursor:pointer;transition:background var(--tr);display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.04);min-height:48px}
+.vdd-item:last-child{border-bottom:none}
+.vdd-item:hover,.vdd-item:active{background:var(--accent-dim)}
+.vdd-left{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.vdd-name{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vdd-sub{font-size:11px;color:var(--text3)}
+.vdd-empty{padding:16px;font-size:13px;color:var(--text3);text-align:center}
+
+/* ── FUEL CHIPS ── */
+.fuel-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+@media(min-width:360px){.fuel-strip{gap:8px}}
+.fuel-chip{padding:9px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:all var(--tr);text-align:center;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+@media(min-width:400px){.fuel-chip{padding:10px 6px}}
+.fuel-chip.selected{border-color:var(--accent);background:var(--accent-dim)}
+.chip-name{font-size:9px;color:var(--text2);font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
+@media(min-width:400px){.chip-name{font-size:10px}}
+.chip-price{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text);line-height:1}
+@media(min-width:400px){.chip-price{font-size:14px}}
+.fuel-chip.selected .chip-price{color:var(--accent)}
+
+/* ── PILL ── */
+.vpill{display:none;align-items:center;gap:8px;padding:6px 12px 6px 10px;background:var(--accent-dim);border:1px solid rgba(0,229,160,.2);border-radius:100px;margin-top:8px;max-width:100%}
+.vpill.on{display:flex}
+.vpill-text{font-size:12px;color:var(--accent);font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vpill-x{width:20px;height:20px;border-radius:50%;background:rgba(0,229,160,.25);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;color:var(--accent);flex-shrink:0;line-height:1;transition:background var(--tr);-webkit-tap-highlight-color:transparent}
+.vpill-x:hover,.vpill-x:active{background:rgba(0,229,160,.4)}
+
+/* ── TRIP TOGGLE ── */
+.trip-toggle{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;height:var(--input-h)}
+.trip-btn{background:var(--surface2);border:none;color:var(--text2);font-family:var(--font-body);font-size:12px;font-weight:500;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;justify-content:center;gap:4px;height:100%;padding:0 4px;-webkit-tap-highlight-color:transparent}
+@media(min-width:380px){.trip-btn{font-size:13px;padding:0 6px}}
+@media(min-width:480px){.trip-btn{font-size:14px;gap:6px}}
+.trip-btn:first-child{border-right:1px solid var(--border)}
+.trip-btn.active{background:var(--accent-dim);color:var(--accent);font-weight:600}
+.trip-btn:hover:not(.active),.trip-btn:active:not(.active){background:rgba(255,255,255,.04);color:var(--text)}
+.trip-label-short{display:inline}
+.trip-label-long{display:none}
+@media(min-width:400px){.trip-label-short{display:none}.trip-label-long{display:inline}}
+
+/* ── CTA BUTTON ── */
+.btn{width:100%;height:var(--btn-primary-h);background:var(--accent);color:#0b0f0e;border:none;border-radius:var(--radius-sm);font-family:var(--font-display);font-size:15px;font-weight:700;cursor:pointer;transition:all var(--tr);display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;letter-spacing:.01em;-webkit-tap-highlight-color:transparent}
+.btn:hover{opacity:.9}
+.btn:active{transform:scale(.98);opacity:.85}
+
+/* ── RESULTS ── */
+.result-panel{display:none}
+.result-panel.on{display:flex;flex-direction:column;gap:10px}
+@media(min-width:480px){.result-panel.on{gap:12px}}
+.result-hero{background:linear-gradient(135deg,#0d1f1c 0%,#0f2a20 100%);border:1px solid rgba(0,229,160,.2);border-radius:var(--radius);padding:24px 20px;text-align:center;position:relative;overflow:hidden}
+@media(min-width:480px){.result-hero{padding:28px 24px}}
+.result-hero::after{content:'';position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,rgba(0,229,160,.15) 0%,transparent 70%);pointer-events:none}
+.result-label{font-size:10px;font-weight:600;color:var(--accent2);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.result-amount{font-family:var(--font-display);font-size:clamp(36px,10vw,62px);font-weight:800;color:var(--accent);line-height:1;letter-spacing:-2px;margin-bottom:6px}
+.result-amount .cur{font-size:.42em;vertical-align:super;letter-spacing:0;opacity:.7}
+.result-vehicle{font-size:12px;color:var(--text2);font-weight:300;word-break:break-word}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 8px;text-align:center}
+@media(min-width:480px){.stat-box{padding:14px 10px}}
+.stat-val{font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1}
+@media(min-width:480px){.stat-val{font-size:19px}}
+.stat-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+@media(min-width:400px){.stat-lbl{font-size:10px}}
+
+/* Extended stats */
+.stats-row2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat-box2{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:10px}
+.stat-box2-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.stat-box2-icon.green{background:var(--accent-dim)}
+.stat-box2-icon.blue{background:var(--blue-dim)}
+.stat-box2-icon.orange{background:var(--orange-dim)}
+.stat-box2-icon.yellow{background:var(--yellow-dim)}
+.stat-box2-body{}
+.stat-box2-val{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--text);line-height:1;margin-bottom:2px}
+.stat-box2-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em}
+
+.eff-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px}
+.eff-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.eff-title{font-size:12px;color:var(--text2);font-weight:500}
+.eff-val{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text)}
+.eff-bg{height:5px;background:var(--border);border-radius:99px;overflow:hidden}
+.eff-fill{height:100%;border-radius:99px;transition:width .8s cubic-bezier(.4,0,.2,1);background:linear-gradient(90deg,var(--accent2),var(--accent))}
+.result-tip-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;display:flex;gap:10px;align-items:flex-start}
+@media(min-width:480px){.result-tip-card{padding:14px 16px;gap:12px}}
+.tip-icon{width:30px;height:30px;border-radius:8px;background:var(--yellow-dim);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+@media(min-width:480px){.tip-icon{width:32px;height:32px;font-size:15px}}
+.tip-text{font-size:13px;color:var(--text2);line-height:1.6;padding-top:1px}
+@media(min-width:480px){.tip-text{font-size:13px}}
+.tip-text strong{color:var(--text);font-weight:500}
+
+/* Save comparison card */
+.save-card{background:linear-gradient(135deg,rgba(0,229,160,.06),rgba(0,184,122,.04));border:1px solid rgba(0,229,160,.15);border-radius:var(--radius-sm);padding:14px 16px}
+.save-title{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.save-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,229,160,.07)}
+.save-row:last-child{border-bottom:none;padding-top:8px}
+.save-row-label{font-size:12px;color:var(--text2)}
+.save-row-val{font-family:var(--font-display);font-size:13px;font-weight:700;color:var(--text)}
+.save-row-val.highlight{color:var(--accent)}
+
+/* Water barrier alert banner */
+.water-alert{background:rgba(77,184,255,.06);border:1px solid rgba(77,184,255,.2);border-radius:var(--radius-sm);padding:10px 14px;display:flex;gap:10px;align-items:flex-start;margin-top:10px}
+.water-alert-text{font-size:12px;color:var(--blue);line-height:1.5}
+.water-alert-text strong{font-weight:600}
+
+/* ── HISTORY ── */
+.history-section{margin-top:36px}
+@media(min-width:480px){.history-section{margin-top:40px}}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-family:var(--font-display);font-size:17px;font-weight:700;letter-spacing:-.3px}
+@media(min-width:480px){.section-title{font-size:18px}}
+.clear-btn{font-size:12px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:var(--font-body);transition:color var(--tr);padding:6px 8px;min-height:36px;-webkit-tap-highlight-color:transparent}
+.clear-btn:hover,.clear-btn:active{color:var(--red)}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.trip-row{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 14px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;animation:slideUp .3s ease both}
+@media(min-width:480px){.trip-row{padding:14px 18px;gap:16px}}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.trip-vehicle{font-size:13px;font-weight:500;color:var(--text);margin-bottom:3px}
+@media(min-width:480px){.trip-vehicle{font-size:14px}}
+.trip-details{font-size:11px;color:var(--text3)}
+.trip-amt{font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--accent);text-align:right;line-height:1;margin-bottom:3px;white-space:nowrap}
+@media(min-width:480px){.trip-amt{font-size:17px}}
+.trip-liters{font-size:10px;color:var(--text3);text-align:right}
+.empty-hist{text-align:center;padding:32px 20px;color:var(--text3);font-size:13px;border:1px dashed var(--border);border-radius:var(--radius-sm)}
+.empty-hist span{display:block;font-size:28px;margin-bottom:10px;opacity:.25}
+#resultPlaceholder{text-align:center;padding:36px 20px}
+@media(min-width:480px){#resultPlaceholder{padding:44px 24px}}
+
+/* ── SPINNER & ANIMATIONS ── */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,229,160,.3);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+.nav-tabs{display:flex;gap:6px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:5px;width:100%;max-width:100%;flex-wrap:wrap;justify-content:center}
+.nav-tab{font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text2);background:none;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;transition:all var(--tr);text-decoration:none;display:inline-flex;align-items:center;gap:5px;min-height:36px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.nav-tab.active{background:var(--accent-dim);color:var(--accent);font-weight:600}
+.nav-tab:hover:not(.active){color:var(--text);background:rgba(255,255,255,.04)}
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="app">
+
+  <header>
+    <a class="logo" href="#"><div class="logo-icon">⛽</div>Fuel<span>ito</span></a>
+    <span class="badge">Trip Calculator</span>
+  </header>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active">🗺️ Trip Calculator</button>
+    <a class="nav-tab" href="fuelito-range.html">📏 Range Calculator</a>
+    <a class="nav-tab" href="fuelito-stations.html">⛽ Gas Stations</a>
+  </div>
+
+  <div class="hero">
+    <div class="hero-label">Smart Fuel Tracking</div>
+    <h1>Know your cost<br>before you <em>drive.</em></h1>
+    <p>Pin your route on the map, pick your vehicle, and get your fuel spend instantly.</p>
+    <div class="hero-meta">
+      <span class="hero-meta-item">✅ No app download needed</span>
+      <span class="hero-meta-dot">·</span>
+      <span class="hero-meta-item">Works right in your browser</span>
+    </div>
+  </div>
+
+  <!-- ── WATER BARRIER ALERT (hidden by default) ── -->
+  <div id="waterAlert" style="display:none" class="water-alert">
+    <span style="font-size:18px;flex-shrink:0">🌊</span>
+    <div class="water-alert-text"><strong>Water barrier detected.</strong> Your route crosses water and requires a ferry or vessel — you cannot drive directly. <span id="waterAlertDetail">See the Travel Options section below for alternative ways to get there.</span></div>
+  </div>
+
+  <!-- ── MAP CARD ── -->
+  <div class="map-card" style="margin-top:16px">
+    <div class="map-header">
+      <div class="map-top-row">
+        <div class="map-title"><span class="dot"></span>Route Planner</div>
+        <div class="map-actions">
+          <button class="map-btn" onclick="useMyLocation()">📍 My Location</button>
+          <a class="map-btn secondary" id="gmapsLink" href="#" target="_blank" rel="noopener">🗺 Google Maps</a>
+        </div>
+      </div>
+      <div class="map-inputs">
+        <div class="loc-group" id="fromGroup">
+          <label>From</label>
+          <div class="loc-input-row">
+            <input type="text" id="fromInput" placeholder="Your location…" autocomplete="off" oninput="locSearch('from')" onfocus="locSearch('from')">
+            <span class="loc-ico">📍</span>
+          </div>
+          <div class="loc-dropdown" id="fromDrop"></div>
+        </div>
+        <div class="loc-group" id="toGroup">
+          <label>To</label>
+          <div class="loc-input-row">
+            <input type="text" id="toInput" placeholder="Destination…" autocomplete="off" oninput="locSearch('to')" onfocus="locSearch('to')">
+            <span class="loc-ico">🏁</span>
+          </div>
+          <div class="loc-dropdown" id="toDrop"></div>
+        </div>
+      </div>
+      <button class="map-route-btn" id="routeBtn" onclick="calcRoute()">
+        📐 &nbsp;Get Driving Distance
+      </button>
+    </div>
+
+    <div style="position:relative;background:#0d1a17;overflow:hidden" id="mapWrap">
+      <canvas id="mapCanvas" style="position:absolute;inset:0;width:100%;height:100%"></canvas>
+      <div id="mapPlaceholder" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3);pointer-events:none">
+        <span style="font-size:40px;opacity:.25">🗺️</span>
+        <span style="font-size:13px;opacity:.55;text-align:center;max-width:220px;line-height:1.5">Enter origin &amp; destination,<br>then tap Get Driving Distance</span>
+      </div>
+      <div style="position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:2px;z-index:10">
+        <button onclick="mapZoom(1)"  style="width:28px;height:28px;background:#1a2120;border:1px solid #243130;border-radius:6px 6px 0 0;color:#e8f0ef;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">+</button>
+        <button onclick="mapZoom(-1)" style="width:28px;height:28px;background:#1a2120;border:1px solid #243130;border-top:none;border-radius:0 0 6px 6px;color:#e8f0ef;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">−</button>
+      </div>
+      <div style="position:absolute;bottom:6px;right:8px;font-size:10px;color:#506663;z-index:10">© OpenStreetMap contributors</div>
+    </div>
+
+    <div class="map-dist-strip">
+      <div class="map-dist-left">
+        <span class="map-dist-label">Driving Distance</span>
+        <span class="map-dist-value" id="distValue">— km</span>
+        <span class="map-dist-sub" id="distSub">Enter origin &amp; destination, then tap Get Driving Distance</span>
+      </div>
+      <div class="map-dist-right">
+        <button class="use-dist-btn" id="useDistBtn" disabled onclick="useDistance()">↙ Use Distance</button>
+        <a class="gmaps-btn" id="gmapsDirBtn" href="#" target="_blank" rel="noopener" style="display:none">🗺 Directions</a>
+      </div>
+    </div>
+
+    <!-- ── TRAVEL OPTIONS (3 routes) ── -->
+    <div class="routes-panel" id="routesPanel" style="padding:14px 16px 16px;border-top:1px solid var(--border)">
+      <div class="card-title" style="margin-bottom:10px"><span class="dot"></span>Travel Options</div>
+      <div class="route-tabs" id="routeTabs"></div>
+      <div id="routeInfoCard" class="route-info-card"></div>
+    </div>
+  </div>
+
+  <!-- ── MAIN GRID ── -->
+  <div class="grid">
+    <div>
+      <div class="card">
+        <div class="card-title-row">
+          <div class="card-title"><span class="dot"></span>Vehicle</div>
+        </div>
+        <div class="field">
+          <label>Search Vehicle</label>
+          <div class="vsearch-wrap">
+            <input type="text" id="vSearch" placeholder="e.g. Honda Click 125i, Toyota Vios…" autocomplete="off">
+            <div class="vdropdown" id="vDrop"></div>
+          </div>
+          <div class="vpill" id="vPill">
+            <span class="vpill-text" id="vPillText"></span>
+            <span class="vpill-x" id="vPillX">✕</span>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Filter</label>
+            <select id="vTypeFilter">
+              <option value="">All</option>
+              <option value="car">🚗 Cars</option>
+              <option value="motorcycle">🏍️ Motos</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Consumption</label>
+            <div class="input-wrap has-prefix">
+              <span class="prefix">km/L</span>
+              <input type="number" id="consumption" placeholder="12" min="1" max="80" step="0.5">
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="card-title"><span class="dot"></span>Fuel Price (₱/L)</div>
+        <div class="fuel-strip" id="fuelStrip">
+          <div class="fuel-chip selected" data-price="67.20" data-type="RON 95">
+            <div class="chip-name">RON 95</div><div class="chip-price">₱67.20</div>
+          </div>
+          <div class="fuel-chip" data-price="64.80" data-type="RON 91">
+            <div class="chip-name">RON 91</div><div class="chip-price">₱64.80</div>
+          </div>
+          <div class="fuel-chip" data-price="62.50" data-type="Diesel">
+            <div class="chip-name">Diesel</div><div class="chip-price">₱62.50</div>
+          </div>
+          <div class="fuel-chip" data-price="0" data-type="Custom">
+            <div class="chip-name">Custom</div><div class="chip-price" id="customLabel">₱ —</div>
+          </div>
+        </div>
+        <div class="field" id="customField" style="display:none;margin-top:12px">
+          <label>Custom Price (₱/L)</label>
+          <div class="input-wrap has-prefix">
+            <span class="prefix">₱</span>
+            <input type="number" id="customPrice" placeholder="0.00" min="0" step="0.10">
+          </div>
+        </div>
+
+        <div class="divider"></div>
+        <div class="card-title"><span class="dot"></span>Route</div>
+        <div class="field-row">
+          <div class="field">
+            <label>Distance</label>
+            <div class="input-wrap has-prefix">
+              <span class="prefix">km</span>
+              <input type="number" id="distance" placeholder="50" min="0.1" step="0.5">
+            </div>
+          </div>
+          <div class="field">
+            <label>Trip Type</label>
+            <div class="trip-toggle">
+              <button class="trip-btn active" id="tripOne" onclick="setTrip(1)">
+                <span class="trip-label-short">→ One Way</span>
+                <span class="trip-label-long">➡ One Way</span>
+              </button>
+              <button class="trip-btn" id="tripTwo" onclick="setTrip(2)">
+                <span class="trip-label-short">↩ Round</span>
+                <span class="trip-label-long">↩ Round Trip</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button class="btn" onclick="calculate()">⚡ &nbsp;Calculate Fuel Cost</button>
+      </div>
+
+    </div>
+
+    <div>
+      <div class="result-panel" id="resultPanel">
+        <div class="result-hero">
+          <div class="result-label">Estimated Fuel Cost</div>
+          <div class="result-amount"><span class="cur">₱</span><span id="totalCost">0.00</span></div>
+          <div class="result-vehicle" id="resultVehicle"></div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box"><div class="stat-val" id="sLiters">—</div><div class="stat-lbl">Liters</div></div>
+          <div class="stat-box"><div class="stat-val" id="sKm">—</div><div class="stat-lbl">km total</div></div>
+          <div class="stat-box"><div class="stat-val" id="sPer100">—</div><div class="stat-lbl">₱/100km</div></div>
+        </div>
+        <!-- Extended stats -->
+        <div class="stats-row2">
+          <div class="stat-box2">
+            <div class="stat-box2-icon green">⛽</div>
+            <div class="stat-box2-body">
+              <div class="stat-box2-val" id="sCostPerKm">—</div>
+              <div class="stat-box2-lbl">₱ per km</div>
+            </div>
+          </div>
+          <div class="stat-box2">
+            <div class="stat-box2-icon blue">⏱️</div>
+            <div class="stat-box2-body">
+              <div class="stat-box2-val" id="sDriveTime">—</div>
+              <div class="stat-box2-lbl">Est. drive time</div>
+            </div>
+          </div>
+          <div class="stat-box2">
+            <div class="stat-box2-icon orange">🌿</div>
+            <div class="stat-box2-body">
+              <div class="stat-box2-val" id="sCO2">—</div>
+              <div class="stat-box2-lbl">kg CO₂ emitted</div>
+            </div>
+          </div>
+          <div class="stat-box2">
+            <div class="stat-box2-icon yellow">💰</div>
+            <div class="stat-box2-body">
+              <div class="stat-box2-val" id="sMonthly">—</div>
+              <div class="stat-box2-lbl">If done 20×/mo</div>
+            </div>
+          </div>
+        </div>
+        <div class="eff-card">
+          <div class="eff-header"><span class="eff-title">Fuel Efficiency</span><span class="eff-val" id="effVal">—</span></div>
+          <div class="eff-bg"><div class="eff-fill" id="effFill" style="width:0%"></div></div>
+        </div>
+
+        <div class="result-tip-card"><div class="tip-icon">💡</div><div class="tip-text" id="tipText">—</div></div>
+
+        <!-- Fuel Saving Tips — shown only after calculation -->
+        <div class="card" style="padding:16px">
+          <div class="card-title-row">
+            <div class="card-title"><span class="dot"></span>Fuel-Saving Tips</div>
+            <button class="tips-btn" onclick="openTipsModal()">💡 See All</button>
+          </div>
+          <div style="display:grid;gap:8px">
+            <div class="tip-item">
+              <div class="tip-badge">🚀</div>
+              <div class="tip-content">
+                <div class="tip-head">Maintain 80–90 km/h on expressways</div>
+                <div class="tip-body">Going 110 km/h vs 90 km/h burns up to 25% more fuel.</div>
+                <span class="tip-savings">Save up to 25%</span>
+              </div>
+            </div>
+            <div class="tip-item">
+              <div class="tip-badge">🔧</div>
+              <div class="tip-content">
+                <div class="tip-head">Check tire pressure weekly</div>
+                <div class="tip-body">Under-inflated tires increase rolling resistance significantly.</div>
+                <span class="tip-savings">Save up to 10%</span>
+              </div>
+            </div>
+            <div class="tip-item">
+              <div class="tip-badge">🕐</div>
+              <div class="tip-content">
+                <div class="tip-head">Travel off-peak (before 6:30AM or after 8PM)</div>
+                <div class="tip-body">Stop-and-go traffic on EDSA can triple your fuel consumption.</div>
+                <span class="tip-savings">Save up to 40%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="resultPlaceholder" class="card">
+        <div style="font-size:44px;margin-bottom:12px;opacity:.2">⛽</div>
+        <div style="font-size:14px;color:var(--text2);font-weight:300;line-height:1.65">Use the map to get your route distance, select your vehicle, then hit <strong style="color:var(--text);font-weight:500">Calculate Fuel Cost</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── HISTORY ── -->
+  <div class="history-section">
+    <div class="section-header">
+      <div class="section-title">Trip History</div>
+      <button class="clear-btn" onclick="clearHistory()">Clear all</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </div>
+</div>
+
+<!-- ── WATER BARRIER MODAL ── -->
+<div class="modal-overlay" id="waterModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('waterModal')">✕</button>
+    <span class="modal-icon">🌊</span>
+    <div class="modal-title">You Can't Cross Water</div>
+    <div class="modal-subtitle" id="waterModalSubtitle">Your selected route crosses a body of water. There is no direct land route available between these two locations.</div>
+    <div class="modal-warning">
+      <span style="font-size:18px">🚫</span>
+      <div class="modal-warning-text"><strong>No direct driving route.</strong> You cannot drive between these two locations — water separates them.</div>
+    </div>
+    <button class="modal-btn secondary" onclick="closeModal('waterModal')">Got it</button>
+  </div>
+</div>
+
+<!-- ── TIPS MODAL ── -->
+<div class="modal-overlay" id="tipsModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('tipsModal')">✕</button>
+    <span class="modal-icon">💡</span>
+    <div class="modal-title">Fuel-Saving Tips</div>
+    <div class="modal-subtitle">Practical ways to stretch every liter in Philippine road conditions.</div>
+    <div class="tip-grid">
+      <div class="tip-item">
+        <div class="tip-badge">🚀</div>
+        <div class="tip-content">
+          <div class="tip-head">Maintain 80–90 km/h on expressways</div>
+          <div class="tip-body">The sweet spot for most PH vehicles. Wind resistance increases exponentially at higher speeds. At 110 km/h you burn up to 25% more than at 90 km/h.</div>
+          <span class="tip-savings">Save up to 25%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">🔧</div>
+        <div class="tip-content">
+          <div class="tip-head">Check tire pressure every week</div>
+          <div class="tip-body">Each PSI drop below recommended pressure increases fuel consumption by ~0.5%. In PH heat, tires deflate faster — check in the morning when cold.</div>
+          <span class="tip-savings">Save up to 10%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">🌡️</div>
+        <div class="tip-content">
+          <div class="tip-head">Pre-cool before entering on hot days</div>
+          <div class="tip-body">Open doors and let hot air escape before turning on A/C. A cabin at 50°C needs 5–8 min of full-blast A/C, consuming extra fuel for that cooldown.</div>
+          <span class="tip-savings">Save 5–8%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">🛑</div>
+        <div class="tip-content">
+          <div class="tip-head">Avoid aggressive braking &amp; acceleration</div>
+          <div class="tip-body">Smooth driving is key. Hard acceleration from stops wastes fuel. Anticipate traffic flow — lifting off the throttle early uses engine braking for free.</div>
+          <span class="tip-savings">Save 15–20%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">🕐</div>
+        <div class="tip-content">
+          <div class="tip-head">Travel off-peak (before 6:30AM or after 8PM)</div>
+          <div class="tip-body">EDSA and major PH roads have severe stop-and-go traffic during rush hour. Idling &amp; frequent stops can triple your fuel use compared to free-flowing conditions.</div>
+          <span class="tip-savings">Save up to 40%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">🔄</div>
+        <div class="tip-content">
+          <div class="tip-head">Change air filter every 10,000–15,000 km</div>
+          <div class="tip-body">A clogged air filter restricts airflow to the engine, causing it to run richer (more fuel). In dusty PH roads, filters clog faster than the service interval suggests.</div>
+          <span class="tip-savings">Save 6–10%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">❄️</div>
+        <div class="tip-content">
+          <div class="tip-head">Use A/C wisely — windows open below 60 km/h</div>
+          <div class="tip-body">At low city speeds, open windows are more efficient. At highway speeds above 60 km/h, A/C beats open windows due to increased drag.</div>
+          <span class="tip-savings">Save 3–7%</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">⛽</div>
+        <div class="tip-content">
+          <div class="tip-head">Don't top off — fill to 3/4 tank</div>
+          <div class="tip-body">A lighter vehicle uses less fuel. Carrying a full 45L tank vs 33L adds ~10 kg of weight. On short city trips this matters more than you think.</div>
+          <span class="tip-savings">Minor savings</span>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-badge">🛣️</div>
+        <div class="tip-content">
+          <div class="tip-head">Use expressways even with toll fees</div>
+          <div class="tip-body">SLEX/NLEX tollways often save more in fuel than they cost in tolls. Avoiding EDSA on a 40 km trip can save ₱50–₱120 in fuel alone vs alternative routes.</div>
+          <span class="tip-savings">Net savings possible</span>
+        </div>
+      </div>
+    </div>
+    <button class="modal-btn" onclick="closeModal('tipsModal')" style="margin-top:16px">Got it! 🙌</button>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────
+let vehicles = [];
+let selectedVehicle = null;
+let fuelPrice = 67.20;
+let fuelType  = 'RON 95';
+let calcDistKm = null;
+let locDebounce = {};
+let tripMultiplier = 1;
+let tripHistory = JSON.parse(localStorage.getItem('fuelito_v3') || '[]');
+let allRoutes = []; // multiple OSRM routes
+let activeRouteIdx = 0;
+
+function setTrip(val) {
+  tripMultiplier = val;
+  document.getElementById('tripOne').classList.toggle('active', val === 1);
+  document.getElementById('tripTwo').classList.toggle('active', val === 2);
+}
+
+// ── Modal helpers ─────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+  document.body.style.overflow = '';
+}
+document.querySelectorAll('.modal-overlay').forEach(m =>
+  m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); })
+);
+function openTipsModal() { openModal('tipsModal'); }
+
+// ── Water barrier detection ───────────────────────────────
+// Island groups in PH that require water crossing
+const WATER_BARRIERS = [
+  // Luzon <-> Visayas
+  { islands: ['luzon','visayas','cebu','iloilo','bacolod','tacloban','ormoc','leyte','samar','bohol','dumaguete','negros'], msg: 'Luzon ↔ Visayas crossing requires a ferry or flight.', ferries: ['2GO Travel Batangas–Cebu (18h)','Starlite Batangas–Calapan (1.5h)','Ro-Ro from Matnog, Sorsogon to Allen, Samar'] },
+  // Visayas <-> Mindanao
+  { islands: ['davao','cagayan de oro','general santos','zamboanga','butuan','cotabato','bukidnon','mindanao'], msg: 'Visayas ↔ Mindanao crossing requires a ferry or flight.', ferries: ['2GO Cebu–Davao','SuperCat Cebu–Cagayan de Oro (8–10h)','Cokaliong Cebu–Butuan'] },
+  // Luzon <-> Palawan
+  { islands: ['palawan','puerto princesa','coron','el nido'], msg: 'Palawan is an island — ferry or flight required.', ferries: ['2GO Manila–Puerto Princesa (1.5 days)','Fast Craft Coron–El Nido','AirAsia / Cebu Pac fly daily'] },
+  // Luzon <-> Mindanao directly
+  { islandPair: [['manila','cebu','iloilo','bacolod','tacloban'],['davao','cdo','general santos','zamboanga','butuan']], msg: 'Manila to Mindanao requires a flight or Luzon–Visayas–Mindanao ferry chain.', ferries: ['Cebu Pacific / AirAsia Manila–Davao (1.5h)','Via Cebu with ferry connections'] },
+];
+
+// Simple island detector based on city name keywords
+const ISLAND_GROUPS = {
+  luzon: ['manila','quezon city','makati','taguig','pasig','caloocan','las piñas','muntinlupa','paranaque','pasay','mandaluyong','marikina','navotas','malabon','valenzuela','san juan','pateros','bacoor','imus','dasmariñas','cavite','batangas','lipa','tanauan','lucena','naga','legazpi','sorsogon','baguio','dagupan','laoag','vigan','pampanga','angeles','clark','tarlac','zambales','olongapo','subic','cabanatuan','bulacan','malolos','meycauayan','laguna','santa rosa','calamba','rizal','antipolo'],
+  visayas: ['cebu','lapu-lapu','mandaue','talisay','iloilo','bacolod','dumaguete','tacloban','ormoc','bohol','tagbilaran','negros','samar','leyte'],
+  mindanao: ['davao','tagum','panabo','digos','cagayan de oro','zamboanga','general santos','butuan','cotabato','iligan','malaybalay','bukidnon','surigao'],
+  palawan: ['palawan','puerto princesa','coron','el nido'],
+  mindoro: ['calapan','san jose','mindoro'],
+  masbate: ['masbate'],
+};
+
+function detectIslandGroup(name) {
+  const nl = (name || '').toLowerCase();
+  for (const [group, cities] of Object.entries(ISLAND_GROUPS)) {
+    if (cities.some(c => nl.includes(c))) return group;
+  }
+  return null;
+}
+
+function checkWaterBarrier(fromName, toName) {
+  const fromGroup = detectIslandGroup(fromName);
+  const toGroup   = detectIslandGroup(toName);
+  if (!fromGroup || !toGroup) return null;
+  if (fromGroup === toGroup) return null;
+
+  // Water barrier exists
+  const pairKey = [fromGroup, toGroup].sort().join('-');
+  const knownPairs = {
+    'luzon-visayas': { msg: 'Your route crosses the Sibuyan Sea (Luzon ↔ Visayas). You cannot drive directly — a ferry is required.', ferries: ['Ro-Ro: Matnog (Sorsogon) → Allen (Samar) via SuperCat/Starlite — ~2h', 'Ferry: Batangas Port → Calapan, Oriental Mindoro (1.5h), then road via Mindoro + Tablas Strait ferry', 'Or fly: Cebu Pac / AirAsia from Manila → Cebu/Iloilo (1h)'] },
+    'luzon-mindanao': { msg: 'Your route would require crossing both the Sibuyan Sea and Mindanao Sea. Multi-ferry or flight strongly recommended.', ferries: ['Fly: Manila → Davao / CDO / GEN (1.5h) via Cebu Pac or AirAsia', 'Ferry chain: Batangas→Cebu (2GO 18h) then Cebu→Davao ferry', 'Drive route: SLEX → Matnog → Samar → Tacloban → Leyte → Surigao Strait Ro-Ro → Surigao → CDO/Davao (2–3 days)'] },
+    'luzon-palawan': { msg: 'Palawan is a separate island — no land bridge to Luzon. Ferry or flight required.', ferries: ['Fly: Cebu Pac / AirAsia Manila → Puerto Princesa (1h)', 'Ferry: 2GO Manila → Puerto Princesa (36h)', 'Fast craft via Coron from Batangas (optional scenic route)'] },
+    'visayas-mindanao': { msg: 'Your route crosses the Mindanao Sea. A ferry is required between the Visayas and Mindanao.', ferries: ['SuperCat / 2GO: Cebu → Cagayan de Oro or Davao (8–14h)', 'Ro-Ro: Liloan, Leyte → Lipata, Surigao (~1h) — best for self-drive', 'Fast ferry: Dipolog → Cebu (~7h)'] },
+    'mindanao-palawan': { msg: 'Palawan and Mindanao are separated by the Sulu Sea. Ferry or flight required.', ferries: ['Fly: Davao → Puerto Princesa (Cebu Pac)', 'No direct ferry service currently — flight recommended'] },
+    'luzon-mindoro': { msg: 'Oriental Mindoro requires a short ferry crossing from Batangas Port.', ferries: ['Starlite / MBRS Lines: Batangas → Calapan (1.5–2h, regular trips)', 'Ro-Ro service available for vehicles'] },
+    'visayas-palawan': { msg: 'Palawan is separated from the Visayas by the Sulu Sea. Ferry or flight required.', ferries: ['Cebu → Coron (fast craft, 8h)', 'Puerto Princesa → Cebu via 2GO', 'Fly via Cebu Pac'] },
+  };
+  return knownPairs[pairKey] || { msg: `Route crosses water (${fromGroup} → ${toGroup}). A ferry or flight is required.`, ferries: ['Check 2GO Travel, Cebu Pacific, AirAsia for available connections'] };
+}
+
+// ── Canvas Tile Map ────────────────────────────────────────
+const locState = { from:{lat:null,lon:null,name:''}, to:{lat:null,lon:null,name:''} };
+let routeGeoJSON = null;
+
+const MAP = {
+  zoom: 12, centerLat: 14.5995, centerLon: 120.9842,
+  tileSize: 256, tileCache: {}, dragging: false,
+  dragStart: null, pixelOffset: { x:0, y:0 },
+};
+
+function lon2tile(lon, z) { return ((lon+180)/360) * Math.pow(2,z); }
+function lat2tile(lat, z) { return (1 - Math.log(Math.tan(lat*Math.PI/180) + 1/Math.cos(lat*Math.PI/180))/Math.PI) / 2 * Math.pow(2,z); }
+
+function latLonToCanvas(lat, lon) {
+  const canvas = document.getElementById('mapCanvas');
+  const cx = canvas.width/2, cy = canvas.height/2;
+  const tx = lon2tile(lon, MAP.zoom), ty = lat2tile(lat, MAP.zoom);
+  const tcx = lon2tile(MAP.centerLon, MAP.zoom), tcy = lat2tile(MAP.centerLat, MAP.zoom);
+  return { x: cx + (tx - tcx)*MAP.tileSize + MAP.pixelOffset.x, y: cy + (ty - tcy)*MAP.tileSize + MAP.pixelOffset.y };
+}
+
+function getTile(x, y, z) {
+  const key = `${z}/${x}/${y}`;
+  if (MAP.tileCache[key]) return MAP.tileCache[key];
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  const s = ['a','b','c','d'][(x+y+z) % 4];
+  img.src = `https://${s}.basemaps.cartocdn.com/dark_all/${z}/${x}/${y}.png`;
+  img.onload  = () => { MAP.tileCache[key] = img; schedDraw(); };
+  img.onerror = () => { MAP.tileCache[key] = 'err'; };
+  MAP.tileCache[key] = null;
+  return null;
+}
+
+let _drawPending = false;
+function schedDraw() {
+  if (_drawPending) return; _drawPending = true;
+  requestAnimationFrame(() => { _drawPending = false; drawMap(); });
+}
+
+// Route colors for 3 alternatives
+const ROUTE_COLORS = ['#00e5a0','#4db8ff','#ff8c42'];
+const ROUTE_LABELS = ['Fastest','Alternative','Scenic'];
+
+function drawMap() {
+  const canvas = document.getElementById('mapCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const tcx = lon2tile(MAP.centerLon, MAP.zoom);
+  const tcy = lat2tile(MAP.centerLat, MAP.zoom);
+  const cx  = canvas.width/2  + MAP.pixelOffset.x;
+  const cy  = canvas.height/2 + MAP.pixelOffset.y;
+  const x0 = Math.floor(tcx - cx/MAP.tileSize) - 1;
+  const y0 = Math.floor(tcy - cy/MAP.tileSize) - 1;
+  const x1 = Math.ceil(tcx + (canvas.width-cx)/MAP.tileSize) + 1;
+  const y1 = Math.ceil(tcy + (canvas.height-cy)/MAP.tileSize) + 1;
+  const maxT = Math.pow(2, MAP.zoom);
+  for (let tx = x0; tx <= x1; tx++) {
+    for (let ty = y0; ty <= y1; ty++) {
+      const px = Math.round((tx-tcx)*MAP.tileSize + canvas.width/2 + MAP.pixelOffset.x);
+      const py = Math.round((ty-tcy)*MAP.tileSize + canvas.height/2 + MAP.pixelOffset.y);
+      const img = getTile(((tx%maxT)+maxT)%maxT, ty, MAP.zoom);
+      if (img && img !== 'err') ctx.drawImage(img, px, py, MAP.tileSize, MAP.tileSize);
+      else { ctx.fillStyle='#12181a'; ctx.fillRect(px, py, MAP.tileSize, MAP.tileSize); }
+    }
+  }
+  ctx.fillStyle = 'rgba(0,229,160,0.04)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw all routes (inactive ones dimmer)
+  if (allRoutes.length > 0) {
+    allRoutes.forEach((route, idx) => {
+      if (idx === activeRouteIdx) return; // draw active last (on top)
+      const coords = route.geometry.coordinates.map(c => [c[1],c[0]]);
+      const col = ROUTE_COLORS[idx] || '#888';
+      drawPolyline(ctx, coords, col, 2.5, 0.25);
+    });
+    // Active route on top
+    const active = allRoutes[activeRouteIdx];
+    if (active) {
+      const coords = active.geometry.coordinates.map(c => [c[1],c[0]]);
+      const col = ROUTE_COLORS[activeRouteIdx] || '#00e5a0';
+      drawPolyline(ctx, coords, col, 3.5, 1);
+    }
+  } else if (routeGeoJSON && routeGeoJSON.length > 1) {
+    drawPolyline(ctx, routeGeoJSON, '#00e5a0', 3.5, 1);
+  }
+
+  // Markers
+  const f = locState.from, t = locState.to;
+  if (f.lat) drawPin(ctx, f.lat, f.lon, '#00e5a0', f.name);
+  if (t.lat) drawPin(ctx, t.lat, t.lon, '#ff5a7e', t.name);
+}
+
+function drawPolyline(ctx, coords, color, width, opacity) {
+  if (!coords.length) return;
+  ctx.globalAlpha = opacity;
+  ctx.beginPath();
+  ctx.strokeStyle = color.replace('#','').length === 6 ? color : color;
+  ctx.lineWidth = width + 4;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // Glow
+  const rgb = hexToRgb(color);
+  ctx.strokeStyle = `rgba(${rgb},${opacity * 0.3})`;
+  coords.forEach(([lat,lon], i) => { const p = latLonToCanvas(lat, lon); i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); });
+  ctx.stroke();
+  // Sharp line
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  coords.forEach(([lat,lon], i) => { const p = latLonToCanvas(lat, lon); i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y); });
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+function drawPin(ctx, lat, lon, color, label) {
+  const p = latLonToCanvas(lat, lon);
+  const r = 9;
+  ctx.beginPath(); ctx.arc(p.x, p.y-r-4, r+2, 0, Math.PI*2); ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, p.y-r-4, r, 0, Math.PI*2); ctx.fillStyle=color; ctx.fill();
+  ctx.beginPath(); ctx.arc(p.x, p.y-r-4, 3.5, 0, Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(p.x-4, p.y-6); ctx.lineTo(p.x+4, p.y-6); ctx.lineTo(p.x, p.y); ctx.fillStyle=color; ctx.fill();
+  if (label) {
+    const short = label.split(',')[0].trim().substring(0, 20);
+    ctx.font = '600 11px DM Sans, sans-serif';
+    const tw = ctx.measureText(short).width;
+    const pw = tw+16, ph = 20;
+    const px2 = p.x-pw/2, py2 = p.y-r-4-r-ph-4;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(px2, py2, pw, ph, 5); else ctx.rect(px2, py2, pw, ph);
+    ctx.fillStyle='#0b0f0e'; ctx.fill();
+    ctx.strokeStyle=color; ctx.lineWidth=1.2; ctx.stroke();
+    ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(short, p.x, py2+ph/2);
+  }
+}
+
+// ── Map drag / zoom ────────────────────────────────────────
+function initMapInteraction() {
+  const canvas = document.getElementById('mapCanvas');
+  canvas.addEventListener('mousedown', e => { MAP.dragging=true; MAP.dragStart={x:e.clientX-MAP.pixelOffset.x, y:e.clientY-MAP.pixelOffset.y}; });
+  window.addEventListener('mousemove', e => { if (!MAP.dragging) return; MAP.pixelOffset.x=e.clientX-MAP.dragStart.x; MAP.pixelOffset.y=e.clientY-MAP.dragStart.y; schedDraw(); });
+  window.addEventListener('mouseup', () => { if (MAP.dragging) { MAP.dragging=false; commitDragToCenter(); } });
+  canvas.addEventListener('touchstart', e => { if (e.touches.length===1) { MAP.dragging=true; MAP.dragStart={x:e.touches[0].clientX-MAP.pixelOffset.x, y:e.touches[0].clientY-MAP.pixelOffset.y}; } }, {passive:true});
+  canvas.addEventListener('touchmove', e => { if (!MAP.dragging||e.touches.length!==1) return; MAP.pixelOffset.x=e.touches[0].clientX-MAP.dragStart.x; MAP.pixelOffset.y=e.touches[0].clientY-MAP.dragStart.y; schedDraw(); e.preventDefault(); }, {passive:false});
+  canvas.addEventListener('touchend', () => { if (MAP.dragging) { MAP.dragging=false; commitDragToCenter(); } });
+  canvas.addEventListener('wheel', e => { e.preventDefault(); mapZoom(e.deltaY<0?1:-1); }, {passive:false});
+}
+
+function commitDragToCenter() {
+  const dLon = -MAP.pixelOffset.x / (MAP.tileSize * Math.pow(2,MAP.zoom)) * 360;
+  const n = Math.PI - 2*Math.PI*(lat2tile(MAP.centerLat,MAP.zoom)+MAP.pixelOffset.y/MAP.tileSize)/Math.pow(2,MAP.zoom);
+  MAP.centerLon += dLon;
+  MAP.centerLat = 180/Math.PI * Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
+  MAP.centerLat = Math.max(-85, Math.min(85, MAP.centerLat));
+  MAP.pixelOffset = {x:0, y:0};
+  MAP.tileCache = {};
+  schedDraw();
+}
+
+function mapZoom(delta) { MAP.zoom = Math.max(3, Math.min(18, MAP.zoom+delta)); schedDraw(); }
+
+function fitMapToBounds(coords) {
+  if (!coords.length) return;
+  const lats=coords.map(c=>c[0]), lons=coords.map(c=>c[1]);
+  MAP.centerLat = (Math.min(...lats)+Math.max(...lats))/2;
+  MAP.centerLon = (Math.min(...lons)+Math.max(...lons))/2;
+  MAP.pixelOffset = {x:0, y:0};
+  const canvas = document.getElementById('mapCanvas');
+  const W = canvas.offsetWidth||800, H = canvas.offsetHeight||320;
+  for (let z=16; z>=3; z--) {
+    const px = (lon2tile(Math.max(...lons),z)-lon2tile(Math.min(...lons),z))*MAP.tileSize;
+    const py = (lat2tile(Math.min(...lats),z)-lat2tile(Math.max(...lats),z))*MAP.tileSize;
+    if (px < W*0.8 && py < H*0.8) { MAP.zoom = z; break; }
+  }
+  schedDraw();
+}
+
+function placeMarker(side, lat, lon, label) {
+  locState[side] = {lat, lon, name: label};
+  document.getElementById('mapPlaceholder').style.display='none';
+  if (!locState.from.lat || !locState.to.lat) {
+    MAP.centerLat=lat; MAP.centerLon=lon; MAP.zoom=14; MAP.pixelOffset={x:0,y:0};
+  }
+  schedDraw();
+  updateGMapsLink();
+}
+
+// ── Defaults ───────────────────────────────────────────────
+const CONS = {
+  Sedan:13,Hatchback:15,Crossover:12,SUV:10,MPV:11,'Pickup Truck':9,Van:9,Coupe:12,
+  Scooter:38,'Underbone / Moped':44,Sport:30,'Naked / Streetfighter':27,'Adventure / Dual-Sport':24,'Big Bike / Cruiser':18
+};
+const getDefCons = v => v.type==='motorcycle' ? (CONS[v.category]||32) : (CONS[v.body_type]||12);
+
+// ── Load vehicles ──────────────────────────────────────────
+const vehicleMap = new Map();
+async function loadVehicles() {
+  try {
+    const r = await fetch('ph_vehicles.json');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const cars  = d.cars.map(v  => ({ ...v, _uid: 'c' + v.uid }));
+    const motos = d.motorcycles.map(v => ({ ...v, _uid: 'm' + v.uid }));
+    vehicles = [...cars, ...motos];
+    vehicleMap.clear();
+    for (const v of vehicles) vehicleMap.set(v._uid, v);
+  } catch(e) {
+    vehicles = [
+      {_uid:'c1',type:'car',brand:'Toyota',model:'Vios',variant:'GL',year:2023,body_type:'Sedan',fuel_type:'Gasoline'},
+      {_uid:'c2',type:'car',brand:'Toyota',model:'Fortuner',variant:'V',year:2023,body_type:'SUV',fuel_type:'Diesel'},
+      {_uid:'c3',type:'car',brand:'Honda',model:'Civic',variant:'RS',year:2023,body_type:'Sedan',fuel_type:'Gasoline'},
+      {_uid:'m1',type:'motorcycle',brand:'Honda',model:'Click 125i',variant:'Standard',year:2025,category:'Scooter',fuel_type:'Gasoline'},
+      {_uid:'m2',type:'motorcycle',brand:'Honda',model:'Click 160',variant:'ABS',year:2024,category:'Scooter',fuel_type:'Gasoline'},
+      {_uid:'m3',type:'motorcycle',brand:'Yamaha',model:'NMAX 155',variant:'Standard',year:2024,category:'Scooter',fuel_type:'Gasoline'},
+    ];
+    vehicleMap.clear();
+    for (const v of vehicles) vehicleMap.set(v._uid, v);
+  }
+}
+
+// ── Vehicle search ─────────────────────────────────────────
+const vSearch = document.getElementById('vSearch');
+const vDrop   = document.getElementById('vDrop');
+const vFilter = document.getElementById('vTypeFilter');
+
+function renderVDrop(raw) {
+  const q = raw.toLowerCase().trim();
+  vDrop.classList.remove('open');
+  if (q.length < 2) return;
+  const ft = vFilter.value;
+  const words = q.split(/\s+/).filter(Boolean);
+  const matches = vehicles.filter(v => {
+    const full = `${v.brand} ${v.model} ${v.variant||''} ${v.year}`.toLowerCase();
+    return (ft ? v.type===ft : true) && words.every(w => full.includes(w));
+  });
+  matches.sort((a,b) => {
+    const bma=`${a.brand} ${a.model}`.toLowerCase(), bmb=`${b.brand} ${b.model}`.toLowerCase();
+    const sa=bma.startsWith(q)?0:bma.includes(q)?1:2, sb=bmb.startsWith(q)?0:bmb.includes(q)?1:2;
+    return sa-sb || b.year-a.year;
+  });
+  const seen = new Set(), display = [];
+  for (const v of matches) {
+    const key = `${v.brand}|${v.model}`;
+    if (!seen.has(key)) { seen.add(key); display.push(v); }
+    if (display.length>=16) break;
+  }
+  if (!display.length) {
+    vDrop.innerHTML = `<div class="vdd-empty">No results for "${raw}"</div>`;
+  } else {
+    vDrop.innerHTML = display.map(v => {
+      const ico = v.type==='motorcycle'?'🏍️':'🚗';
+      const sub = v.type==='motorcycle'?(v.category||''):(v.body_type||'');
+      return `<div class="vdd-item" data-uid="${v._uid}">
+        <div class="vdd-left"><span class="vdd-name">${ico} ${v.brand} ${v.model}</span><span class="vdd-sub">${sub}${v.fuel_type?' · '+v.fuel_type:''}</span></div>
+        <span style="font-size:11px;color:var(--text3)">${v.year}</span>
+      </div>`;
+    }).join('');
+    vDrop.querySelectorAll('.vdd-item').forEach(el =>
+      el.addEventListener('mousedown', e => { e.preventDefault(); pickVehicle(el.dataset.uid); })
+    );
+  }
+  vDrop.classList.add('open');
+}
+
+vSearch.addEventListener('input', () => renderVDrop(vSearch.value));
+vSearch.addEventListener('focus', () => { if (vSearch.value.length>=2) renderVDrop(vSearch.value); });
+vSearch.addEventListener('blur',  () => setTimeout(() => vDrop.classList.remove('open'), 160));
+vFilter.addEventListener('change',() => { if (vSearch.value.length>=2) renderVDrop(vSearch.value); });
+
+function pickVehicle(uid) {
+  const v = vehicleMap.get(uid);
+  if (!v) return;
+  selectedVehicle = v;
+  const sub = v.type==='motorcycle' ? v.category : v.body_type;
+  vSearch.value = `${v.brand} ${v.model} (${v.year}) — ${sub}`;
+  vDrop.classList.remove('open');
+  document.getElementById('consumption').value = getDefCons(v);
+  document.getElementById('vPillText').textContent = `${v.brand} ${v.model} ${v.variant||''} · ${v.year}`;
+  document.getElementById('vPill').classList.add('on');
+  updateGMapsLink(); // refresh Google Maps link with correct vehicle type
+}
+
+document.getElementById('vPillX').addEventListener('click', () => {
+  selectedVehicle = null;
+  vSearch.value = '';
+  document.getElementById('vPill').classList.remove('on');
+  document.getElementById('consumption').value = '';
+  updateGMapsLink();
+});
+
+// ── Fuel chips ─────────────────────────────────────────────
+document.getElementById('fuelStrip').addEventListener('click', e => {
+  const chip = e.target.closest('.fuel-chip'); if (!chip) return;
+  document.querySelectorAll('.fuel-chip').forEach(c=>c.classList.remove('selected'));
+  chip.classList.add('selected');
+  fuelType = chip.dataset.type;
+  if (fuelType==='Custom') {
+    document.getElementById('customField').style.display='';
+    fuelPrice = parseFloat(document.getElementById('customPrice').value)||0;
+  } else {
+    document.getElementById('customField').style.display='none';
+    fuelPrice = parseFloat(chip.dataset.price);
+  }
+});
+document.getElementById('customPrice').addEventListener('input', e => {
+  fuelPrice = parseFloat(e.target.value)||0;
+  document.getElementById('customLabel').textContent = fuelPrice ? `₱${fuelPrice.toFixed(2)}` : '₱ —';
+});
+
+// ── PH Places list ─────────────────────────────────────────
+const PH_PLACES = [
+  {n:'Quezon City',s:'Metro Manila',lat:14.6760,lon:121.0437},{n:'Manila',s:'Metro Manila',lat:14.5995,lon:120.9842},{n:'Makati',s:'Metro Manila',lat:14.5547,lon:121.0244},{n:'Pasig',s:'Metro Manila',lat:14.5764,lon:121.0851},{n:'Taguig',s:'Metro Manila',lat:14.5243,lon:121.0792},{n:'Mandaluyong',s:'Metro Manila',lat:14.5794,lon:121.0359},{n:'Marikina',s:'Metro Manila',lat:14.6507,lon:121.1029},{n:'Caloocan',s:'Metro Manila',lat:14.7497,lon:120.9673},{n:'Las Piñas',s:'Metro Manila',lat:14.4453,lon:120.9936},{n:'Muntinlupa',s:'Metro Manila',lat:14.4081,lon:121.0415},{n:'Parañaque',s:'Metro Manila',lat:14.4793,lon:121.0198},{n:'Pasay',s:'Metro Manila',lat:14.5378,lon:121.0014},{n:'San Juan',s:'Metro Manila',lat:14.6019,lon:121.0355},{n:'BGC',s:'Taguig',lat:14.5499,lon:121.0479},{n:'Bonifacio Global City',s:'Taguig',lat:14.5499,lon:121.0479},{n:'Ortigas Center',s:'Pasig',lat:14.5854,lon:121.0586},{n:'Alabang',s:'Muntinlupa',lat:14.4229,lon:121.0413},{n:'Ayala Avenue',s:'Makati',lat:14.5563,lon:121.0193},{n:'Cubao',s:'Quezon City',lat:14.6196,lon:121.0536},{n:'Katipunan',s:'Quezon City',lat:14.6537,lon:121.0766},{n:'UP Diliman',s:'Quezon City',lat:14.6541,lon:121.0637},{n:'NAIA Terminal 3',s:'Pasay',lat:14.5122,lon:121.0202},{n:'SM Mall of Asia',s:'Pasay',lat:14.5355,lon:120.9829},{n:'SM North EDSA',s:'Quezon City',lat:14.6564,lon:121.0319},{n:'Glorietta',s:'Makati',lat:14.5514,lon:121.0218},{n:'SM Megamall',s:'Mandaluyong',lat:14.5857,lon:121.0567},{n:'Santa Rosa',s:'Laguna',lat:14.3122,lon:121.1114},{n:'Calamba',s:'Laguna',lat:14.2117,lon:121.1653},{n:'San Pedro',s:'Laguna',lat:14.3599,lon:121.0527},{n:'Biñan',s:'Laguna',lat:14.3395,lon:121.0810},{n:'Los Baños',s:'Laguna',lat:14.1666,lon:121.2422},{n:'UPLB',s:'Los Baños, Laguna',lat:14.1657,lon:121.2432},{n:'Bacoor',s:'Cavite',lat:14.4624,lon:120.9646},{n:'Imus',s:'Cavite',lat:14.4297,lon:120.9367},{n:'Dasmariñas',s:'Cavite',lat:14.3294,lon:120.9367},{n:'Tagaytay',s:'Cavite',lat:14.1153,lon:120.9621},{n:'Antipolo',s:'Rizal',lat:14.6258,lon:121.1243},{n:'Cainta',s:'Rizal',lat:14.5771,lon:121.1227},{n:'Malolos',s:'Bulacan',lat:14.8527,lon:120.8118},{n:'Meycauayan',s:'Bulacan',lat:14.7351,lon:120.9606},{n:'Angeles',s:'Pampanga',lat:15.1450,lon:120.5887},{n:'San Fernando',s:'Pampanga',lat:15.0286,lon:120.6899},{n:'Clark',s:'Pampanga',lat:15.1858,lon:120.5540},{n:'Batangas City',s:'Batangas',lat:13.7565,lon:121.0583},{n:'Lipa',s:'Batangas',lat:13.9411,lon:121.1631},{n:'Tagaytay',s:'Cavite',lat:14.1153,lon:120.9621},{n:'Baguio',s:'Benguet',lat:16.4023,lon:120.5960},{n:'Naga',s:'Camarines Sur',lat:13.6218,lon:123.1945},{n:'Legazpi',s:'Albay',lat:13.1391,lon:123.7437},{n:'Cebu City',s:'Cebu',lat:10.3157,lon:123.8854},{n:'Lapu-Lapu',s:'Cebu',lat:10.3103,lon:123.9494},{n:'Davao City',s:'Davao del Sur',lat:7.1907,lon:125.4553},{n:'Cagayan de Oro',s:'Misamis Oriental',lat:8.4542,lon:124.6319},{n:'Iloilo City',s:'Iloilo',lat:10.6969,lon:122.5644},{n:'Bacolod',s:'Negros Occidental',lat:10.6407,lon:122.9620},{n:'General Santos',s:'South Cotabato',lat:6.1164,lon:125.1716},{n:'Tacloban',s:'Leyte',lat:11.2442,lon:125.0039},{n:'Puerto Princesa',s:'Palawan',lat:9.7392,lon:118.7353},{n:'El Nido',s:'Palawan',lat:11.1829,lon:119.4088},{n:'Lucena',s:'Quezon',lat:13.9318,lon:121.6150},{n:'Tarlac City',s:'Tarlac',lat:15.4755,lon:120.5960},{n:'Olongapo',s:'Zambales',lat:14.8295,lon:120.2826},{n:'Subic',s:'Zambales',lat:14.7442,lon:120.2337},{n:'Cabanatuan',s:'Nueva Ecija',lat:15.4862,lon:120.9712},{n:'Tuguegarao',s:'Cagayan',lat:17.6131,lon:121.7269},{n:'Zamboanga City',s:'Zamboanga del Sur',lat:6.9214,lon:122.0790},{n:'Butuan',s:'Agusan del Norte',lat:8.9475,lon:125.5406},{n:'Cotabato City',s:'Maguindanao',lat:7.2236,lon:124.2472},{n:'Vigan',s:'Ilocos Sur',lat:17.5747,lon:120.3869},{n:'Laoag',s:'Ilocos Norte',lat:18.1977,lon:120.5932},{n:'Dagupan',s:'Pangasinan',lat:16.0433,lon:120.3337},{n:'San Fernando',s:'La Union',lat:16.6159,lon:120.3166},
+].sort((a,b) => a.n.localeCompare(b.n));
+
+function searchLocal(q) {
+  const ql = q.toLowerCase();
+  return PH_PLACES.filter(p => p.n.toLowerCase().includes(ql) || p.s.toLowerCase().includes(ql)).slice(0,6);
+}
+
+// ── Location autocomplete ──────────────────────────────────
+const locAbort = {};
+function locSearch(side) {
+  const inp = document.getElementById(side+'Input');
+  const drop = document.getElementById(side+'Drop');
+  const q = inp.value.trim();
+  if (!q || q.length < 2) { drop.classList.remove('open'); return; }
+  const local = searchLocal(q);
+  if (local.length) {
+    renderLocResults(local.map(p => ({ lat:p.lat, lon:p.lon, main:p.n, sub:p.s, ico:'📍', full:`${p.n}, ${p.s}, Philippines` })), drop, inp, side, true);
+  } else {
+    drop.innerHTML = `<div class="loc-dd-loader"><span class="spin"></span> Searching…</div>`;
+    drop.classList.add('open');
+  }
+  if (q.length < 3) return;
+  clearTimeout(locDebounce[side]);
+  if (locAbort[side]) { try { locAbort[side].abort(); } catch(e){} }
+  locDebounce[side] = setTimeout(async () => {
+    const ctrl = new AbortController(); locAbort[side] = ctrl;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Philippines')}&format=json&limit=6&countrycodes=ph&accept-language=en&addressdetails=1`;
+      const res  = await fetch(url, { signal:ctrl.signal, headers:{'Accept-Language':'en'} });
+      const data = await res.json();
+      if (!data.length) return;
+      const results = data.map(r => {
+        const parts = r.display_name.split(',');
+        const ico = r.type==='city'||r.type==='town'?'🏙️':r.type==='road'?'🛣️':r.class==='amenity'?'🏢':'📌';
+        return { lat:parseFloat(r.lat), lon:parseFloat(r.lon), main:parts[0].trim(), sub:parts.slice(1,3).join(',').trim(), ico, full:r.display_name };
+      });
+      renderLocResults(results, drop, inp, side, false);
+    } catch(e) { if (e.name==='AbortError') return; }
+  }, 150);
+}
+
+function renderLocResults(results, drop, inp, side, isLocal) {
+  drop.innerHTML = results.map(r =>
+    `<div class="loc-dd-item" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.full.replace(/"/g,'')}">
+      <span class="loc-dd-icon">${r.ico}</span>
+      <div class="loc-dd-text"><span class="loc-dd-main">${r.main}</span><span class="loc-dd-sub">${r.sub}</span></div>
+    </div>`
+  ).join('') + (isLocal ? `<div class="loc-dd-more"><span class="spin"></span> Finding more…</div>` : '');
+  drop.querySelectorAll('.loc-dd-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const { lat, lon, name } = el.dataset;
+      inp.value = name.split(',').slice(0,2).join(',').trim();
+      drop.classList.remove('open');
+      if (locAbort[side]) { try { locAbort[side].abort(); } catch(e){} }
+      placeMarker(side, parseFloat(lat), parseFloat(lon), inp.value);
+    });
+  });
+  drop.classList.add('open');
+}
+
+document.getElementById('fromInput').addEventListener('blur', ()=>setTimeout(()=>document.getElementById('fromDrop').classList.remove('open'),200));
+document.getElementById('toInput').addEventListener('blur',   ()=>setTimeout(()=>document.getElementById('toDrop').classList.remove('open'),200));
+['fromInput','toInput'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') calcRoute(); }));
+
+// ── My Location ────────────────────────────────────────────
+function useMyLocation() {
+  if (!navigator.geolocation) { alert('Geolocation not supported.'); return; }
+  const btn = document.querySelector('.map-btn');
+  btn.textContent = '⏳ Locating…'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const { latitude:lat, longitude:lon } = pos.coords;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+      const d = await r.json();
+      const a = d.address;
+      const label = [a.road||a.amenity, a.suburb||a.neighbourhood, a.city||a.town||a.municipality||a.county].filter(Boolean).join(', ');
+      const name = label || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      document.getElementById('fromInput').value = name;
+      placeMarker('from', lat, lon, name);
+    } catch {
+      const name = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      document.getElementById('fromInput').value = name;
+      placeMarker('from', lat, lon, name);
+    }
+    btn.innerHTML = '📍 My Location'; btn.disabled = false;
+  }, () => {
+    alert('Location access denied.'); btn.innerHTML = '📍 My Location'; btn.disabled = false;
+  });
+}
+
+// ── Google Maps link (vehicle-aware) ──────────────────────
+function updateGMapsLink() {
+  const f = locState.from, t = locState.to;
+  // Determine travel mode based on selected vehicle
+  const isMoto = selectedVehicle && selectedVehicle.type === 'motorcycle';
+  const travelMode = isMoto ? 'two-wheeler' : 'driving';
+  const gmTravelMode = isMoto ? 'motorcycling' : 'driving';
+
+  const gmapsLink = document.getElementById('gmapsLink');
+  const gmapsDirBtn = document.getElementById('gmapsDirBtn');
+
+  let href = '#';
+  if (f.lat && t.lat) {
+    href = `https://www.google.com/maps/dir/?api=1&origin=${f.lat},${f.lon}&destination=${t.lat},${t.lon}&travelmode=${isMoto ? 'two-wheeler' : 'driving'}`;
+    gmapsDirBtn.style.display = '';
+    gmapsDirBtn.href = href;
+    gmapsDirBtn.title = isMoto ? '🏍️ Motorcycle route in Google Maps' : '🚗 Car route in Google Maps';
+  } else if (f.lat) {
+    href = `https://www.google.com/maps/search/?api=1&query=${f.lat},${f.lon}`;
+    gmapsDirBtn.style.display = 'none';
+  } else {
+    gmapsDirBtn.style.display = 'none';
+  }
+  gmapsLink.href = href;
+  if (isMoto) {
+    gmapsDirBtn.innerHTML = `🏍️ Moto Directions`;
+  } else {
+    gmapsDirBtn.innerHTML = `🗺 Car Directions`;
+  }
+}
+
+// ── Calc Route with 3 alternatives (OSRM) ────────────────
+async function geocodeText(text) {
+  const ql = text.toLowerCase().trim();
+  const local = PH_PLACES.find(p => p.n.toLowerCase()===ql || `${p.n}, ${p.s}`.toLowerCase()===ql);
+  if (local) return { lat:local.lat, lon:local.lon, name:`${local.n}, ${local.s}` };
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text+', Philippines')}&format=json&limit=1&countrycodes=ph`;
+  const res = await fetch(url, { headers:{'Accept-Language':'en'} });
+  const d = await res.json();
+  if (!d.length) throw new Error(`Could not find "${text}" — try selecting from the dropdown.`);
+  return { lat:parseFloat(d[0].lat), lon:parseFloat(d[0].lon), name:d[0].display_name.split(',').slice(0,2).join(',').trim() };
+}
+
+async function calcRoute() {
+  const fromText = document.getElementById('fromInput').value.trim();
+  const toText   = document.getElementById('toInput').value.trim();
+  if (!fromText || !toText) { alert('Please enter both From and To locations.'); return; }
+
+  const btn = document.getElementById('routeBtn');
+  btn.innerHTML = '<span class="spin"></span> &nbsp;Calculating…'; btn.disabled = true;
+  document.getElementById('distSub').textContent = 'Looking up locations…';
+
+  try {
+    let f = locState.from.lat ? locState.from : null;
+    let t = locState.to.lat   ? locState.to   : null;
+    if (!f) { const r = await geocodeText(fromText); f = r; locState.from = r; }
+    if (!t) { const r = await geocodeText(toText);   t = r; locState.to   = r; }
+
+    // ── WATER BARRIER CHECK ──
+    const waterCheck = checkWaterBarrier(f.name || fromText, t.name || toText);
+    if (waterCheck) {
+      document.getElementById('waterModalSubtitle').textContent = waterCheck.msg;
+      const list = document.getElementById('waterCrossOptions');
+      list.innerHTML = waterCheck.ferries.map(s => `<li>${s}</li>`).join('');
+      openModal('waterModal');
+      // Show alert banner
+      document.getElementById('waterAlert').style.display = '';
+      document.getElementById('waterAlertDetail').textContent = waterCheck.msg;
+      // Still try to draw the points on map
+      placeMarker('from', f.lat, f.lon, f.name||fromText);
+      placeMarker('to', t.lat, t.lon, t.name||toText);
+      MAP.centerLat=(f.lat+t.lat)/2; MAP.centerLon=(f.lon+t.lon)/2; MAP.zoom=7;
+      MAP.pixelOffset={x:0,y:0}; MAP.tileCache={}; schedDraw();
+      document.getElementById('distValue').textContent='— km';
+      document.getElementById('distSub').textContent='⚠️ Water crossing required — no direct driving route.';
+      return;
+    } else {
+      document.getElementById('waterAlert').style.display = 'none';
+    }
+
+    document.getElementById('distSub').textContent = 'Calculating routes…';
+
+    // Request up to 3 alternatives from OSRM
+    const url = `https://router.project-osrm.org/route/v1/driving/${f.lon},${f.lat};${t.lon},${t.lat}?overview=full&geometries=geojson&alternatives=true`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes.length) throw new Error('No driving route found between these locations.');
+
+    allRoutes = data.routes.slice(0, 3);
+    activeRouteIdx = 0;
+
+    // Use fastest route as default
+    const route = allRoutes[0];
+    calcDistKm = route.distance / 1000;
+    const mins  = Math.round(route.duration / 60);
+    const dur   = mins>=60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`;
+
+    document.getElementById('distValue').textContent = calcDistKm.toFixed(1) + ' km';
+    document.getElementById('distSub').textContent   = `Est. drive time: ${dur}`;
+    document.getElementById('useDistBtn').disabled   = false;
+
+    placeMarker('from', f.lat, f.lon, f.name||fromText);
+    placeMarker('to',   t.lat, t.lon, t.name||toText);
+
+    routeGeoJSON = route.geometry.coordinates.map(c => [c[1],c[0]]);
+    fitMapToBounds(routeGeoJSON);
+    updateGMapsLink();
+    renderRouteTabs();
+  } catch(e) {
+    document.getElementById('distSub').textContent = '⚠️ ' + (e.message || 'Route failed. Try again.');
+    document.getElementById('distValue').textContent = '— km';
+  } finally {
+    btn.innerHTML = '📐 &nbsp;Get Driving Distance'; btn.disabled = false;
+  }
+}
+
+function renderRouteTabs() {
+  const panel = document.getElementById('routesPanel');
+  if (allRoutes.length < 1) { panel.classList.remove('on'); return; }
+  panel.classList.add('on');
+
+  const tabs = document.getElementById('routeTabs');
+  const BADGES = ['route-badge','route-badge alt','route-badge scenic'];
+  const ICONS  = ['⚡','🔀','🌿'];
+  tabs.innerHTML = allRoutes.map((r,i) => {
+    const km = (r.distance/1000).toFixed(1);
+    const mins = Math.round(r.duration/60);
+    const dur = mins>=60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins}m`;
+    return `<button class="route-tab${i===activeRouteIdx?' active':''}" onclick="selectRoute(${i})">
+      ${ICONS[i]} ${ROUTE_LABELS[i]||'Route '+(i+1)} — ${km}km (${dur})
+    </button>`;
+  }).join('');
+
+  renderRouteInfoCard();
+}
+
+function renderRouteInfoCard() {
+  const r = allRoutes[activeRouteIdx];
+  if (!r) return;
+  const km = (r.distance/1000).toFixed(1);
+  const mins = Math.round(r.duration/60);
+  const dur = mins>=60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`;
+  const BADGE_CLASSES = ['route-badge','route-badge alt','route-badge scenic'];
+  const DESCS = [
+    'Fastest driving route. Best for reaching your destination quickly. May use tollways.',
+    'Alternative route. May be longer but avoids heavy traffic corridors.',
+    'Third option. Consider this for varied conditions or local roads.'
+  ];
+  document.getElementById('routeInfoCard').innerHTML = `
+    <span class="${BADGE_CLASSES[activeRouteIdx]||'route-badge'}">${ROUTE_LABELS[activeRouteIdx]||'Route '+(activeRouteIdx+1)}</span>
+    <div class="route-stats">
+      <span class="route-stat"><strong>${km} km</strong></span>
+      <span class="route-stat"><strong>${dur}</strong> drive time</span>
+    </div>
+    <span class="route-desc">${DESCS[activeRouteIdx]||''}</span>
+  `;
+}
+
+function selectRoute(idx) {
+  activeRouteIdx = idx;
+  const r = allRoutes[idx];
+  if (!r) return;
+  calcDistKm = r.distance / 1000;
+  const mins = Math.round(r.duration/60);
+  const dur = mins>=60 ? `${Math.floor(mins/60)}h ${mins%60}m` : `${mins} min`;
+  document.getElementById('distValue').textContent = calcDistKm.toFixed(1) + ' km';
+  document.getElementById('distSub').textContent   = `Est. drive time: ${dur}`;
+  routeGeoJSON = r.geometry.coordinates.map(c => [c[1],c[0]]);
+  schedDraw();
+  renderRouteTabs();
+}
+
+function useDistance() {
+  if (!calcDistKm) return;
+  const el = document.getElementById('distance');
+  el.value = calcDistKm.toFixed(1);
+  el.scrollIntoView({ behavior:'smooth', block:'center' });
+  el.focus();
+  el.style.borderColor='var(--accent)'; el.style.boxShadow='0 0 0 3px var(--accent-dim)';
+  setTimeout(()=>{ el.style.borderColor=''; el.style.boxShadow=''; }, 1600);
+}
+
+// ── Calculate ─────────────────────────────────────────────
+function calculate() {
+  const cons = parseFloat(document.getElementById('consumption').value);
+  const dist = parseFloat(document.getElementById('distance').value);
+  const multi = tripMultiplier;
+  if (!cons||cons<=0) { shake('consumption'); return; }
+  if (!dist||dist<=0) { shake('distance');    return; }
+  if (!fuelPrice||fuelPrice<=0) { alert('Please select or enter a fuel price.'); return; }
+
+  const km     = dist * multi;
+  const liters = km / cons;
+  const cost   = liters * fuelPrice;
+  const p100   = (cost/km)*100;
+  const costPerKm = cost / km;
+  // CO2: petrol ~2.31 kg/L, diesel ~2.68 kg/L
+  const co2Factor = fuelType.toLowerCase().includes('diesel') ? 2.68 : 2.31;
+  const co2 = liters * co2Factor;
+  // Estimated drive time (assume avg 60 km/h city/highway mix)
+  const avgSpeed = km > 80 ? 75 : 45; // expressway vs city
+  const driveMins = Math.round((km / avgSpeed) * 60);
+  const driveTime = driveMins >= 60 ? `${Math.floor(driveMins/60)}h ${driveMins%60}m` : `${driveMins}m`;
+  // Monthly estimate (20 trips)
+  const monthly = cost * 20;
+
+  document.getElementById('resultPlaceholder').style.display = 'none';
+  document.getElementById('resultPanel').classList.add('on');
+
+  animNum('totalCost', cost, 2);
+  document.getElementById('sLiters').textContent    = liters.toFixed(2);
+  document.getElementById('sKm').textContent        = km.toFixed(1);
+  document.getElementById('sPer100').textContent    = '₱'+p100.toFixed(0);
+  document.getElementById('sCostPerKm').textContent = '₱'+costPerKm.toFixed(2);
+  document.getElementById('sDriveTime').textContent = driveTime;
+  document.getElementById('sCO2').textContent       = co2.toFixed(1);
+  document.getElementById('sMonthly').textContent   = '₱'+monthly.toFixed(0);
+  document.getElementById('effVal').textContent     = cons+' km/L';
+  setTimeout(() => {
+    document.getElementById('effFill').style.width = Math.min(100,Math.max(0,((cons-5)/45)*100))+'%';
+  }, 80);
+
+  const vLabel = selectedVehicle ? `${selectedVehicle.brand} ${selectedVehicle.model} (${selectedVehicle.year})` : 'Custom Vehicle';
+  document.getElementById('resultVehicle').textContent = `${vLabel} · ${fuelType} @ ₱${fuelPrice.toFixed(2)}/L`;
+  setTip(cons, p100, multi, cost, km);
+  addHistory({ vehicle:vLabel, distance:km, cons, fuelType, fuelPrice, liters:liters.toFixed(2), cost:cost.toFixed(2), date:new Date().toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'}) });
+}
+
+function animNum(id, target, dec) {
+  const el=document.getElementById(id), dur=650, t0=performance.now();
+  (function step(now){
+    const t=Math.min((now-t0)/dur,1), e=1-Math.pow(1-t,3);
+    el.textContent=(target*e).toFixed(dec);
+    if(t<1) requestAnimationFrame(step); else el.textContent=target.toFixed(dec);
+  })(performance.now());
+}
+
+function shake(id) {
+  const el=document.getElementById(id);
+  el.style.animation='none'; el.offsetHeight;
+  el.style.animation='shake .3s ease'; el.focus();
+}
+
+function setTip(c, p, r, cost, km) {
+  const isMoto = selectedVehicle && selectedVehicle.type === 'motorcycle';
+  const tips=[
+    [()=>c>=35, `<strong>Excellent efficiency!</strong> At ${c} km/L, that's top-tier scooter economy. Keep tire pressure at recommended PSI — it drops fast in PH heat.`],
+    [()=>c>=20, `<strong>Good efficiency.</strong> ${c} km/L is above average for Philippine roads. Regular oil changes keep it there.`],
+    [()=>c<9,   `<strong>Low fuel efficiency.</strong> At ${c} km/L, a dirty air filter or low tires may be the culprit — quick checks can recover 10–20%.`],
+    [()=>r===2, `<strong>Round trip loaded.</strong> Batching your errands on the way back could cut this cost significantly.`],
+    [()=>p>280, `<strong>High cost per 100km.</strong> A more efficient vehicle or carpooling could save thousands per year.`],
+    [()=>isMoto&&km>300, `<strong>Long moto ride ahead!</strong> Plan fuel stops every 150–200 km, avoid highways above 100 km/h — most scooters hit best efficiency at 60–80 km/h.`],
+    [()=>km>100, `<strong>Tip:</strong> For trips over 100km, using SLEX/NLEX expressways is usually net-cheaper — you save more in fuel than you pay in tolls.`],
+    [()=>true,  `<strong>Tip:</strong> Steady 80–90 km/h on SLEX/NLEX is the sweet spot for fuel efficiency. Avoid sudden braking — coast to stops when possible.`],
+  ];
+  for(const[cond,text] of tips){ if(cond()){ document.getElementById('tipText').innerHTML=text; return; } }
+}
+
+// ── History ───────────────────────────────────────────────
+function addHistory(e) {
+  tripHistory.unshift(e);
+  if(tripHistory.length>10) tripHistory.length=10;
+  localStorage.setItem('fuelito_v3', JSON.stringify(tripHistory));
+  renderHistory();
+}
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (!tripHistory.length) {
+    list.innerHTML = `<div class="empty-hist"><span>📋</span>No trips logged yet.</div>`;
+    return;
+  }
+  list.innerHTML = tripHistory.map((t,i) =>
+    `<div class="trip-row" style="animation-delay:${i*.05}s">
+      <div>
+        <div class="trip-vehicle">${t.vehicle}</div>
+        <div class="trip-details">${t.distance} km · ${t.cons} km/L · ${t.fuelType} · ${t.date}</div>
+      </div>
+      <div>
+        <div class="trip-amt">₱${parseFloat(t.cost).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="trip-liters">${t.liters}L used</div>
+      </div>
+    </div>`
+  ).join('');
+}
+function clearHistory() {
+  tripHistory = []; localStorage.removeItem('fuelito_v3'); renderHistory();
+}
+
+// ── Init ──────────────────────────────────────────────────
+const _canvas = document.getElementById('mapCanvas');
+const _wrap   = document.getElementById('mapWrap');
+_canvas.width  = _wrap.offsetWidth;
+_canvas.height = _wrap.offsetHeight;
+schedDraw();
+initMapInteraction();
+window.addEventListener('resize', () => {
+  _canvas.width  = _wrap.offsetWidth;
+  _canvas.height = _wrap.offsetHeight;
+  MAP.tileCache  = {};
+  schedDraw();
+});
+
+document.getElementById('vSearch').value = '';
+document.getElementById('vPill').classList.remove('on');
+document.getElementById('consumption').value = '';
+selectedVehicle = null;
+
+loadVehicles().then(renderHistory);
+</script>
+</body>
+</html>
