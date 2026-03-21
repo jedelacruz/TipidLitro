@@ -18,7 +18,13 @@
 
     *{box-sizing:border-box;margin:0;padding:0}
     html{-webkit-text-size-adjust:100%}
-    body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    body{
+      font-family:var(--font-body);
+      background:linear-gradient(180deg,#070a09 0%, var(--bg) 60%, #070a09 100%);
+      color:var(--text);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
 
     body::before{
       content:'';
@@ -49,6 +55,12 @@
       display:flex;gap:6px;margin-bottom:28px;background:var(--surface);border:1px solid var(--border);
       border-radius:var(--radius-sm);padding:5px;width:100%;max-width:100%;flex-wrap:wrap;justify-content:center
     }
+    .nav-tabs{
+      background:rgba(19,25,24,.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-color:rgba(36,49,48,.75);
+    }
     @media(min-width:480px){.nav-tabs{gap:8px;margin-bottom:36px}}
     .nav-tab{
       font-family:var(--font-body);font-size:13px;font-weight:500;color:var(--text2);
@@ -60,12 +72,12 @@
 
     .hero{
       margin-bottom:28px;
-      background-image:url("hero-bg.png");
+      background-image:none;
       background-size:cover;
       background-position:center;
-      border:1px solid var(--border);
+      border:1px solid rgba(36,49,48,.9);
       border-radius:var(--radius);
-      padding:24px 16px;
+      padding:18px 14px;
       position:relative;
       overflow:hidden;
     }
@@ -79,6 +91,19 @@
     }
 
     .hero > *{position:relative}
+
+    .hero-box{
+      background:rgba(11,15,14,.45);
+      border:1px solid rgba(36,49,48,.7);
+      border-radius:calc(var(--radius) - 6px);
+      padding:22px 16px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      max-width:820px;
+      margin:0 auto;
+      box-shadow: 0 18px 60px rgba(0,0,0,.35);
+    }
+    @media(min-width:480px){.hero-box{padding:26px 22px}}
 
     .hero-label{font-size:11px;font-weight:500;color:var(--accent);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
     .hero-label::before{content:'';display:inline-block;width:18px;height:2px;background:var(--accent);border-radius:2px}
@@ -114,13 +139,130 @@
     }
     .btn:hover{opacity:.9}
     .btn:active{transform:scale(.98);opacity:.85}
+
+    .hero-actions{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:14px;
+    }
+    @media(min-width:720px){.hero-actions{grid-template-columns:repeat(3,1fr)}}
+
+    .btn.secondary{
+      background:rgba(255,119,61,.10);
+      border:1px solid rgba(255,119,61,.35);
+      color:var(--accent);
+    }
+
+    .features{
+      margin-top:18px;
+      margin-bottom:6px;
+    }
+    .feature-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+    @media(min-width:720px){.feature-grid{grid-template-columns:repeat(3,1fr)}}
+
+    .feature-card{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      padding:16px 14px;
+      border-radius:var(--radius-sm);
+      background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.08);
+      text-decoration:none;
+      transition:transform var(--tr), border-color var(--tr), background var(--tr);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .feature-card:hover{
+      transform: translateY(-1px);
+      border-color:rgba(255,119,61,.5);
+      background:rgba(255,119,61,.06);
+    }
+
+    .feature-icon{
+      width:38px;height:38px;
+      border-radius:12px;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(255,119,61,.12);
+      border:1px solid rgba(255,119,61,.28);
+      flex-shrink:0;
+      font-size:16px;
+    }
+    .feature-title{
+      font-family:var(--font-display);
+      font-size:14px;font-weight:800;color:var(--text);
+      margin-bottom:4px;
+      letter-spacing:-.2px;
+    }
+    .feature-desc{
+      font-size:12px;
+      color:var(--text2);
+      line-height:1.55;
+      margin-top:2px;
+    }
+
+    /* Minimal landing layout */
+    .home-main{max-width:var(--page-max);margin:0 auto;padding:0 16px 60px;z-index:1;position:relative}
+    @media(min-width:480px){.home-main{padding:0 20px 80px}}
+    @media(min-width:768px){.home-main{padding:0 28px 80px}}
+
+    .main-card{
+      background:rgba(19,25,24,.55);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:calc(var(--radius) + 2px);
+      padding:22px 14px;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      box-shadow: 0 18px 70px rgba(0,0,0,.35);
+      max-width:920px;
+      margin:0 auto;
+    }
+    @media(min-width:720px){.main-card{padding:28px 20px}}
+
+    .main-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:11px;
+      font-weight:700;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+      color:var(--accent);
+      background:rgba(255,119,61,.08);
+      border:1px solid rgba(255,119,61,.25);
+      border-radius:999px;
+      padding:8px 12px;
+    }
+
+    .main-title{
+      font-family:var(--font-display);
+      font-size:clamp(28px,5vw,52px);
+      font-weight:900;
+      line-height:1.02;
+      letter-spacing:-1.5px;
+      margin:14px 0 10px;
+    }
+
+    .accent-text{color:var(--accent)}
+
+    .main-sub{
+      font-size:14px;
+      color:var(--text2);
+      line-height:1.7;
+      margin:0 0 18px;
+      max-width:640px;
+      font-weight:300;
+    }
+    @media(min-width:480px){.main-sub{font-size:15px}}
   </style>
 </head>
 
 <body>
-  <div class="blob blob-1"></div>
-  <div class="blob blob-2"></div>
-
   <div class="app">
     <header>
       <a class="logo" href="index.html">
@@ -137,17 +279,35 @@
       <a class="nav-tab" href="tipidlitro-stations.html">⛽ Gas Stations</a>
     </div>
 
-    <section class="hero">
-      <div class="hero-label">Smart Fuel Intelligence</div>
-      <h1>Fuel Smarter<br>with <em>TipidLitro</em></h1>
-      <p>Trip Calculator, Range Calculator, and Gas Stations — all in one app.</p>
-      <div class="hero-meta">
-        <span class="hero-meta-item">✅ No app download needed</span>
-        <span class="hero-meta-dot">·</span>
-        <span class="hero-meta-item">Works right in your browser</span>
-      </div>
+    <main class="main-card" aria-label="TipidLitro landing">
+      <div class="main-pill">Smart Fuel Intelligence</div>
+      <h1 class="main-title">Fuel Smarter<br>with <span class="accent-text">TipidLitro</span></h1>
+      <p class="main-sub">Trip Calculator, Range Calculator, and Gas Stations — all of the features say it — all in one app.</p>
 
-    </section>
+      <div class="feature-grid" aria-label="App features">
+        <a class="feature-card" href="tipidlitro-calculator.html">
+          <div class="feature-icon">🗺️</div>
+          <div>
+            <div class="feature-title">Trip Calculator</div>
+            <div class="feature-desc">Plan routes and estimate your fuel cost instantly.</div>
+          </div>
+        </a>
+        <a class="feature-card" href="tipidlitro-range.html">
+          <div class="feature-icon">📏</div>
+          <div>
+            <div class="feature-title">Range Calculator</div>
+            <div class="feature-desc">See how far your money (and tank) can take you.</div>
+          </div>
+        </a>
+        <a class="feature-card" href="tipidlitro-stations.html">
+          <div class="feature-icon">⛽</div>
+          <div>
+            <div class="feature-title">Gas Stations</div>
+            <div class="feature-desc">Browse live fuel prices and keep the data accurate.</div>
+          </div>
+        </a>
+      </div>
+    </main>
   </div>
 </body>
 </html>
