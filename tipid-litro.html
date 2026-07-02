@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TipidLitro — Fuel Smarter, Travel Smarter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+/* ============================================================
+   TIPIDLITRO DESIGN SYSTEM
+   Grounded in the instrument cluster / dashboard gauge — the
+   one object every motorist already reads at a glance.
+   ============================================================ */
+:root{
+  --bg: #F4F5F1;
+  --surface: #FFFFFF;
+  --surface-sunken: #ECEEE9;
+  --ink: #14181C;
+  --ink-soft: #4B535B;
+  --ink-faint: #838C93;
+  --line: #DCE0DD;
+  --amber: #F2A900;
+  --amber-ink: #5C3E00;
+  --green: #1E7F5C;
+  --green-soft: #E4F2EC;
+  --red: #D64545;
+  --red-soft: #FBE8E8;
+  --asphalt: #14181C;
+  --radius-s: 6px;
+  --radius-m: 12px;
+  --radius-l: 20px;
+  --shadow: 0 1px 2px rgba(20,24,28,0.06), 0 8px 24px -12px rgba(20,24,28,0.18);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+*{ box-sizing: border-box; }
+html{ scroll-behavior: smooth; }
+body{
+  margin:0;
+  font-family: var(--font-body);
+  background: #cfd4d8;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+
+/* ---------- Mobile emulator frame ---------- */
+.mobile-wrapper{
+  position:relative;
+  width:100%;
+  max-width:414px;
+  height:90vh;
+  max-height:896px;
+  margin:0 auto;
+  background: var(--bg);
+  border-radius:44px;
+  border:12px solid #14181C;
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.55), 0 10px 30px -10px rgba(0,0,0,0.35);
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.mobile-wrapper::-webkit-scrollbar{ display:none; width:0; height:0; }
+
+.app-scroll{
+  flex:1; min-height:0; overflow-y:auto; overflow-x:hidden;
+  -ms-overflow-style:none; scrollbar-width:none;
+  display:flex; flex-direction:column;
+}
+.app-scroll::-webkit-scrollbar{ display:none; width:0; height:0; }
+
+/* Android-style status bar */
+.status-bar{
+  flex-shrink:0; z-index:120; position:relative;
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 10px 22px 6px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono); font-size:0.74rem; font-weight:600;
+  letter-spacing:0.01em;
+}
+.status-bar .sb-time{ min-width:40px; }
+.status-bar .sb-icons{ display:flex; align-items:center; gap:5px; }
+.status-bar .sb-icons svg{ width:16px; height:16px; display:block; }
+.status-bar .sb-notch{
+  position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:110px; height:22px; background:#14181C; border-radius:0 0 16px 16px;
+}
+body:not(.authenticated) .status-bar{ color:#fff; }
+
+/* Android gesture / home indicator bar */
+.android-home-indicator{
+  flex-shrink:0; z-index:120; display:flex; align-items:center; justify-content:center;
+  padding:8px 0 6px; background:transparent;
+}
+.android-home-indicator span{
+  width:120px; height:4px; border-radius:999px; background: rgba(20,24,28,0.28);
+}
+body:not(.authenticated) .android-home-indicator span{ background: rgba(255,255,255,0.35); }
+
+.mobile-wrapper .chat-fab{
+  position:absolute; right:16px; bottom:96px; top:auto; left:auto;
+}
+.mobile-wrapper .chat-panel{
+  position:absolute; right:16px; bottom:164px; top:auto; left:auto;
+  width: calc(100% - 32px); max-width: 340px;
+  height: 54%; max-height: 460px;
+}
+
+/* Default (pre-auth) visibility */
+body:not(.authenticated) .app-nav,
+body:not(.authenticated) main,
+body:not(.authenticated) .bottom-nav,
+body:not(.authenticated) .chat-fab,
+body:not(.authenticated) .chat-panel{
+  display:none !important;
+}
+
+/* Force single-column mobile layout everywhere */
+.hero,
+.problem-solution,
+.tool-grid,
+.calc-grid,
+.locator-layout{
+  grid-template-columns: 1fr !important;
+}
+
+@media (max-width: 500px){
+  body{ background: var(--bg); display:block; min-height:100vh; margin:0; }
+  .mobile-wrapper{
+    max-width:100%; width:100%; height:100vh; max-height:none;
+    border-radius:0; border:none; box-shadow:none;
+  }
+}
+img,svg{ display:block; max-width:100%; }
+button{ font-family: inherit; cursor:pointer; }
+input, select{ font-family: inherit; }
+a{ color: inherit; }
+.readout{
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ---------- Layout shell ---------- */
+.app-nav{
+  flex-shrink:0; z-index: 40;
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 6px 20px 14px;
+  background: transparent;
+}
+.brand{
+  display:flex; align-items:center; gap:9px;
+  font-family: var(--font-display); font-weight:700; font-size:1.02rem;
+  letter-spacing: -0.01em;
+}
+.brand-mark{
+  width:32px; height:32px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+}
+.brand-mark svg{ width:18px; height:18px; }
+.brand small{
+  display:block; font-family: var(--font-body); font-weight:500;
+  font-size: 0.58rem; color: var(--ink-faint); letter-spacing: 0.06em; text-transform:uppercase;
+}
+.nav-loc{
+  display:flex; align-items:center; gap:6px;
+  border:1px solid var(--line); background: var(--surface);
+  padding: 7px 12px; border-radius: 999px; font-size: 0.72rem; font-weight:600;
+  color: var(--ink-soft); white-space: nowrap;
+}
+.nav-loc.located{ color: var(--green); border-color: var(--green); background: var(--green-soft); }
+.nav-loc svg{ width:13px; height:13px; }
+
+main{ flex:1; margin: 0 auto; padding: 0 18px 28px; width:100%; }
+.view{ display:none; }
+.view.active{ display:block; animation: rise .35s ease; }
+@keyframes rise{ from{ opacity:0; transform: translateY(8px);} to{ opacity:1; transform:none; } }
+
+/* ---------- Bottom app tab bar ---------- */
+.bottom-nav{
+  flex-shrink:0; z-index:80; position:relative;
+  display:flex; align-items:stretch; justify-content:space-around; gap:2px;
+  padding: 8px 8px 4px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px -16px rgba(20,24,28,0.25);
+}
+.bottom-nav button{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  border:none; background:transparent; padding:6px 4px 7px; border-radius:14px;
+  font-size:0.62rem; font-weight:600; color: var(--ink-faint); transition: color .15s ease;
+}
+.bottom-nav button svg{ width:21px; height:21px; stroke: var(--ink-faint); transition: stroke .15s ease, transform .15s ease; }
+.bottom-nav button.active{ color: var(--green); }
+.bottom-nav button.active svg{ stroke: var(--green); transform: translateY(-1px); }
+.bottom-nav button .bn-dot{
+  width:4px; height:4px; border-radius:50%; background: var(--green); opacity:0; margin-top:-1px;
+  transition: opacity .15s ease;
+}
+.bottom-nav button.active .bn-dot{ opacity:1; }
+
+/* ---------- Home / hero ---------- */
+.hero{
+  display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px;
+  align-items:center; padding: 32px 0 40px;
+}
+.hero h1{
+  font-family: var(--font-display); font-size: clamp(2.2rem, 4vw, 3.2rem);
+  line-height:1.05; letter-spacing:-0.02em; margin: 0 0 18px;
+}
+.hero h1 em{ font-style:normal; color: var(--green); }
+.hero p{ color: var(--ink-soft); font-size: 1.05rem; line-height:1.6; max-width: 46ch; margin:0 0 28px; }
+.hero-ctas{ display:flex; gap:12px; flex-wrap:wrap; }
+.btn{
+  border:none; border-radius: 10px; padding: 13px 22px; font-weight:600; font-size:0.92rem;
+  display:inline-flex; align-items:center; gap:8px; transition: transform .12s ease, box-shadow .12s ease;
+}
+.btn:active{ transform: translateY(1px); }
+.btn-primary{ background: var(--asphalt); color:#fff; }
+.btn-primary:hover{ box-shadow: 0 6px 18px -6px rgba(20,24,28,0.4); }
+.btn-amber{ background: var(--amber); color: var(--amber-ink); }
+.btn-amber:hover{ box-shadow: 0 6px 18px -6px rgba(242,169,0,0.55); }
+.btn-ghost{ background: var(--surface); border:1px solid var(--line); color: var(--ink); }
+.btn-ghost:hover{ border-color: var(--ink-faint); }
+.btn-block{ width:100%; justify-content:center; }
+.btn:disabled{ opacity:0.55; cursor:not-allowed; }
+
+.hero-gauge{ position:relative; }
+.stat-row{ display:flex; gap:10px; margin-top:22px; flex-wrap:wrap; }
+.stat-chip{
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-m);
+  padding: 10px 14px; font-size:0.78rem; color: var(--ink-soft); display:flex; align-items:center; gap:8px;
+}
+.stat-chip b{ font-family: var(--font-mono); color: var(--ink); font-size:0.9rem; }
+
+.section-label{
+  font-size: 0.72rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+  color: var(--green); margin-bottom:8px; display:block;
+}
+
+.problem-solution{
+  display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin: 48px 0;
+}
+.ps-card{
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-l);
+  padding: 26px;
+}
+.ps-card h3{ font-family: var(--font-display); font-size:1.2rem; margin:0 0 12px; }
+.ps-card ul{ margin:0; padding-left: 18px; color: var(--ink-soft); font-size:0.92rem; line-height:1.7; }
+.ps-card p{ color: var(--ink-soft); font-size:0.92rem; line-height:1.7; margin: 0 0 10px; }
+
+.tool-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:18px; margin: 8px 0 40px; }
+.tool-card{
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-l);
+  padding: 24px; text-align:left; transition: border-color .15s ease, transform .15s ease;
+}
+.tool-card:hover{ border-color: var(--asphalt); transform: translateY(-2px); }
+.tool-icon{
+  width:42px; height:42px; border-radius:10px; background: var(--surface-sunken);
+  display:flex; align-items:center; justify-content:center; margin-bottom:16px;
+}
+.tool-icon svg{ width:22px; height:22px; }
+.tool-card h4{ font-family:var(--font-display); font-size:1.05rem; margin:0 0 6px; }
+.tool-card p{ color: var(--ink-soft); font-size:0.86rem; line-height:1.55; margin:0 0 14px; }
+.tool-card .go{ font-size:0.82rem; font-weight:700; color: var(--asphalt); display:flex; align-items:center; gap:6px; }
+
+/* hero, problem-solution and tool-grid are always single-column — see global overrides above */
+
+/* ---------- Shared panel / form pieces ---------- */
+.view-head{ padding: 40px 0 8px; }
+.view-head h2{ font-family: var(--font-display); font-size:2rem; margin:0 0 8px; letter-spacing:-0.01em; }
+.view-head p{ color: var(--ink-soft); max-width:56ch; line-height:1.6; margin:0; }
+
+.calc-grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 28px 0 60px; align-items:start; }
+.panel{
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-l);
+  padding: 26px;
+}
+.panel h3{ font-family: var(--font-display); font-size:1.05rem; margin:0 0 4px; }
+.panel .hint{ color: var(--ink-faint); font-size:0.8rem; margin: 0 0 20px; }
+
+.field{ margin-bottom:16px; }
+.field label{ display:block; font-size:0.78rem; font-weight:600; color: var(--ink-soft); margin-bottom:6px; }
+.field .row{ display:flex; gap:8px; }
+.field input, .field select{
+  width:100%; padding: 11px 13px; border-radius: var(--radius-s); border:1px solid var(--line);
+  background: var(--surface-sunken); font-size:0.92rem; color: var(--ink); outline:none;
+  transition: border-color .12s ease, background .12s ease;
+}
+.field input:focus, .field select:focus{ border-color: var(--asphalt); background: #fff; }
+.field .unit-input{ position:relative; }
+.field .unit-input span{
+  position:absolute; right:13px; top:50%; transform:translateY(-50%);
+  font-size:0.76rem; color: var(--ink-faint); font-weight:600; pointer-events:none;
+}
+.field .unit-input input{ padding-right: 46px; }
+.toggle-row{ display:flex; gap:6px; background: var(--surface-sunken); padding:3px; border-radius:8px; margin-bottom:16px; }
+.toggle-row button{
+  flex:1; border:none; background:transparent; padding:8px 10px; border-radius:6px;
+  font-size:0.78rem; font-weight:600; color: var(--ink-soft);
+}
+.toggle-row button.active{ background:#fff; color: var(--ink); box-shadow: var(--shadow); }
+.divider-label{
+  display:flex; align-items:center; gap:10px; color:var(--ink-faint); font-size:0.72rem;
+  font-weight:700; text-transform:uppercase; letter-spacing:0.08em; margin: 18px 0;
+}
+.divider-label::before, .divider-label::after{ content:''; flex:1; height:1px; background: var(--line); }
+
+.result-panel{
+  background: var(--asphalt); border-radius: var(--radius-l); padding: 28px; color:#fff;
+  position: static;
+}
+.result-panel .hint{ color: rgba(255,255,255,0.55); }
+.result-panel h3{ color:#fff; }
+.result-empty{ color: rgba(255,255,255,0.45); font-size:0.88rem; padding: 30px 0; text-align:center; line-height:1.6; }
+.readout-block{ margin: 18px 0; }
+.readout-block .rlabel{ font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color: rgba(255,255,255,0.5); margin-bottom:4px; }
+.readout-block .rvalue{ font-family: var(--font-mono); font-size: 2.1rem; font-weight:600; color: var(--amber); line-height:1.1; }
+.readout-block .rvalue span{ font-size:1rem; color: rgba(255,255,255,0.6); margin-left:6px; }
+.result-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:20px; }
+.result-mini{ background: rgba(255,255,255,0.06); border-radius: var(--radius-m); padding:14px; }
+.result-mini .rlabel{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color: rgba(255,255,255,0.5); margin-bottom:6px; }
+.result-mini .rvalue{ font-family: var(--font-mono); font-size:1.3rem; font-weight:600; }
+.result-note{ font-size:0.76rem; color: rgba(255,255,255,0.45); margin-top:18px; line-height:1.6; border-top:1px solid rgba(255,255,255,0.12); padding-top:14px; }
+
+/* gauge */
+.gauge-wrap{ text-align:center; padding: 10px 0 4px; }
+.gauge-value{ font-family: var(--font-mono); font-size:2.4rem; font-weight:600; margin-top:-38px; }
+.gauge-value span{ font-size:1rem; color: var(--ink-faint); display:block; font-family:var(--font-body); font-weight:600; margin-top:2px;}
+
+/* calc-grid and result-panel are always single-column/static — see global overrides above */
+
+/* ---------- Locator ---------- */
+.locator-layout{ display:grid; grid-template-columns: 1fr 1.3fr; gap:24px; margin: 28px 0 60px; }
+#map{ height: 320px; border-radius: var(--radius-l); border:1px solid var(--line); overflow:hidden; }
+.station-list{ display:flex; flex-direction:column; gap:10px; max-height:320px; overflow-y:auto; padding-right:4px; }
+.station-card{
+  background: var(--surface); border:1px solid var(--line); border-radius: var(--radius-m);
+  padding:14px 16px; display:flex; justify-content:space-between; align-items:center; gap:10px;
+  cursor:pointer; transition: border-color .12s ease;
+}
+.station-card:hover{ border-color: var(--asphalt); }
+.station-card h5{ margin:0 0 3px; font-size:0.9rem; }
+.station-card .dist{ font-family: var(--font-mono); font-size:0.78rem; color: var(--green); font-weight:600; }
+.station-card a{ font-size:0.76rem; font-weight:700; color: var(--asphalt); white-space:nowrap; text-decoration:none; border:1px solid var(--line); padding:6px 10px; border-radius:8px; }
+.station-card a:hover{ border-color: var(--asphalt); }
+.empty-state{
+  text-align:center; padding: 50px 20px; color: var(--ink-faint); font-size:0.88rem; line-height:1.7;
+}
+/* locator-layout is always single-column — see global overrides above */
+
+/* ---------- Chatbot ---------- */
+.chat-fab{
+  position:absolute; bottom:20px; right:16px; z-index:110;
+  width:58px; height:58px; border-radius:50%; background: var(--amber);
+  border:none; box-shadow: 0 10px 30px -8px rgba(242,169,0,0.6);
+  display:flex; align-items:center; justify-content:center;
+}
+.chat-fab svg{ width:24px; height:24px; color: var(--amber-ink); }
+.chat-fab .dot{
+  position:absolute; top:6px; right:6px; width:10px; height:10px; border-radius:50%;
+  background: var(--red); border:2px solid var(--bg);
+}
+.chat-panel{
+  position:absolute; bottom: 84px; right:16px; z-index:110; width: calc(100% - 32px); max-width: 340px;
+  height: 64%; max-height: 520px;
+  background: var(--surface); border-radius: var(--radius-l); box-shadow: 0 24px 60px -16px rgba(20,24,28,0.4);
+  border:1px solid var(--line); display:flex; flex-direction:column; overflow:hidden;
+  transform: translateY(16px) scale(0.98); opacity:0; pointer-events:none; transition: all .18s ease;
+}
+.chat-panel.open{ transform:none; opacity:1; pointer-events:auto; }
+.chat-head{
+  background: var(--asphalt); color:#fff; padding: 16px 18px; display:flex; align-items:center; gap:10px;
+}
+.chat-head .chat-mascot{ width:30px; height:30px; flex-shrink:0; }
+.chat-head .who{ font-family: var(--font-display); font-weight:700; font-size:0.95rem; }
+.chat-head .sub{ font-size:0.72rem; color: rgba(255,255,255,0.55); }
+.chat-head button{ background:transparent; border:none; color:rgba(255,255,255,0.7); width:28px; height:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:8px; }
+.chat-head button:hover{ background: rgba(255,255,255,0.12); }
+.chat-head button svg{ width:16px; height:16px; }
+.chat-head #chatKeyBtn{ margin-left:auto; }
+.chat-body{ flex:1; overflow-y:auto; padding: 16px; display:flex; flex-direction:column; gap:12px; background: var(--surface-sunken); }
+.msg{ max-width: 86%; padding: 10px 13px; border-radius: 14px; font-size:0.87rem; line-height:1.5; }
+.msg.bot{ background:#fff; border:1px solid var(--line); align-self:flex-start; border-bottom-left-radius:4px; }
+.msg.user{ background: var(--asphalt); color:#fff; align-self:flex-end; border-bottom-right-radius:4px; }
+.msg .readout-inline{ font-family: var(--font-mono); font-weight:600; color: var(--green); }
+.msg.bot.typing{ display:flex; gap:4px; align-items:center; padding: 13px 16px; }
+.msg.bot.typing span{ width:6px; height:6px; border-radius:50%; background: var(--ink-faint); animation: blink 1.2s infinite ease-in-out; }
+.msg.bot.typing span:nth-child(2){ animation-delay:.2s; }
+.msg.bot.typing span:nth-child(3){ animation-delay:.4s; }
+@keyframes blink{ 0%,80%,100%{ opacity:.25; } 40%{ opacity:1; } }
+.chip-row{ display:flex; gap:6px; flex-wrap:wrap; padding: 0 16px 12px; }
+.chip{
+  background:#fff; border:1px solid var(--line); border-radius:999px; padding:7px 12px;
+  font-size:0.74rem; font-weight:600; color: var(--ink-soft);
+}
+.chip:hover{ border-color: var(--asphalt); color: var(--ink); }
+.chat-input-row{ display:flex; gap:8px; padding: 12px; border-top:1px solid var(--line); background:#fff; }
+.chat-input-row input{
+  flex:1; border:1px solid var(--line); border-radius: 999px; padding: 11px 16px; font-size:0.87rem;
+  background: var(--surface-sunken); outline:none;
+}
+.chat-input-row input:focus{ border-color: var(--asphalt); background:#fff; }
+.chat-input-row button{
+  width:40px; height:40px; border-radius:50%; border:none; background: var(--asphalt); color:#fff;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.chat-input-row button:disabled{ opacity:0.4; }
+.chat-input-row button svg{ width:16px; height:16px; }
+
+footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-size:0.78rem; }
+
+/* ---------- Splash & Auth screens ---------- */
+#splash-screen, #auth-screen{
+  position:absolute; inset:0; z-index:100;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding: 40px 30px;
+  background: radial-gradient(120% 90% at 50% -10%, #263040 0%, var(--asphalt) 48%, #0b0d10 100%);
+  color:#fff; text-align:center;
+  transition: opacity .4s ease, visibility .4s ease;
+}
+#auth-screen{ display:none; justify-content:flex-end; padding: 0; }
+#auth-screen.show{ display:flex; }
+#splash-screen.fade-out, #auth-screen.fade-out{ opacity:0; pointer-events:none; }
+
+/* Mascot */
+.mascot{ width:132px; height:132px; margin-bottom:6px; filter: drop-shadow(0 18px 30px rgba(0,0,0,0.4)); }
+.mascot-bob{ animation: mascotBob 2.6s ease-in-out infinite; }
+@keyframes mascotBob{ 0%,100%{ transform: translateY(0) rotate(0deg);} 50%{ transform: translateY(-8px) rotate(-2deg);} }
+
+.splash-title{
+  font-family: var(--font-display); font-weight:700; font-size:2rem;
+  letter-spacing:-0.02em; margin: 6px 0 6px;
+}
+.splash-title em{ font-style:normal; color: var(--amber); }
+.splash-tagline{ color: rgba(255,255,255,0.55); font-size:0.85rem; margin:0 0 40px; }
+.splash-loader{
+  width:150px; height:4px; border-radius:999px; background: rgba(255,255,255,0.12); overflow:hidden;
+}
+.splash-loader span{
+  display:block; height:100%; width:40%; border-radius:999px;
+  background: linear-gradient(90deg, var(--amber), #ffcf4d);
+  animation: splashTrack 1.4s ease-in-out infinite;
+}
+@keyframes splashTrack{
+  0%{ transform: translateX(-100%); }
+  100%{ transform: translateX(350%); }
+}
+
+/* Auth card — modern bottom-sheet style */
+.auth-hero{
+  flex:1; width:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding: 20px 30px;
+}
+.auth-mascot{ width:108px; height:108px; margin-bottom:14px; }
+.auth-sheet{
+  width:100%; background:#fff; color: var(--ink);
+  border-radius: 28px 28px 0 0;
+  padding: 30px 26px 26px;
+  box-shadow: 0 -20px 50px -20px rgba(0,0,0,0.5);
+}
+.auth-title{
+  font-family: var(--font-display); font-weight:700; font-size:1.5rem;
+  letter-spacing:-0.02em; margin:0 0 6px; text-align:left;
+}
+.auth-title em{ font-style:normal; color: var(--green); }
+.auth-tagline{
+  color: var(--ink-soft); font-size:0.86rem; line-height:1.55;
+  text-align:left; margin: 0 0 26px;
+}
+.auth-actions{ width:100%; display:flex; flex-direction:column; gap:11px; }
+.auth-btn{
+  width:100%; border-radius:14px; padding:14px 18px; font-weight:600; font-size:0.9rem;
+  display:flex; align-items:center; justify-content:center; gap:10px; border:none;
+  transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+}
+.auth-btn:active{ transform: translateY(1px); }
+.auth-btn:disabled{ opacity:0.75; cursor:not-allowed; }
+.auth-btn-google{ background:#fff; color:#1F1F1F; border:1.5px solid var(--line) !important; }
+.auth-btn-google:hover{ box-shadow: 0 8px 20px -10px rgba(20,24,28,0.25); }
+.auth-btn-guest{ background: var(--asphalt); color:#fff; }
+.auth-btn-guest:hover{ box-shadow: 0 8px 20px -10px rgba(20,24,28,0.45); }
+.auth-google-icon{ width:18px; height:18px; flex-shrink:0; }
+.auth-spinner{
+  width:16px; height:16px; border-radius:50%;
+  border: 2px solid rgba(0,0,0,0.15); border-top-color: currentColor;
+  animation: auth-spin .7s linear infinite; display:none; flex-shrink:0;
+}
+.auth-btn.loading .auth-spinner{ display:inline-block; }
+.auth-btn.loading .auth-google-icon{ display:none; }
+@keyframes auth-spin{ to{ transform: rotate(360deg); } }
+.auth-footnote{
+  margin-top:20px; font-size:0.66rem; color: var(--ink-faint);
+  letter-spacing:0.04em; text-align:center;
+}
+
+/* Post-auth fade-in for the app shell */
+.app-shell-fade{ animation: appFadeIn .4s ease; }
+@keyframes appFadeIn{ from{ opacity:0; transform: translateY(6px); } to{ opacity:1; transform:none; } }
+
+/* ---------- Header session / logout ---------- */
+.nav-session{ display:flex; align-items:center; gap:10px; }
+.nav-user{ display:none; align-items:center; gap:8px; }
+.nav-user.show{ display:flex; }
+.nav-user-avatar{
+  width:28px; height:28px; border-radius:50%; background: var(--amber);
+  display:flex; align-items:center; justify-content:center;
+  font-family: var(--font-display); font-weight:700; font-size:0.78rem; color: var(--amber-ink);
+  flex-shrink:0; overflow:hidden;
+}
+.nav-user-name{ display:none; }
+.logout-btn{
+  width:34px; height:34px; border-radius:50%; border:1px solid var(--line); background: var(--surface);
+  display:flex; align-items:center; justify-content:center; color: var(--ink-soft); flex-shrink:0;
+  transition: border-color .12s ease, color .12s ease;
+}
+.logout-btn:hover{ border-color: var(--red); color: var(--red); }
+.logout-btn svg{ width:16px; height:16px; }
+
+
+</style>
+</head>
+<body>
+<div class="mobile-wrapper">
+
+<!-- ============ ANDROID STATUS BAR ============ -->
+<div class="status-bar">
+  <div class="sb-notch"></div>
+  <span class="sb-time">9:41</span>
+  <span class="sb-icons">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.5a16 16 0 0 1 20 0"/><path d="M5 12.5a11 11 0 0 1 14 0"/><path d="M8.5 16.5a6 6 0 0 1 7 0"/><circle cx="12" cy="20" r="1" fill="currentColor" stroke="none"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h.01M7 20v-4M12 20v-8M17 20v-12M22 20v-16"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="7" width="18" height="10" rx="2.5"/><path d="M22 10v4" stroke="currentColor" stroke-width="1.6" fill="none"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor" stroke="none"/></svg>
+  </span>
+</div>
+
+<!-- ============ SPLASH SCREEN ============ -->
+<div id="splash-screen">
+<img src="icon_logo.png" class="mascot mascot-bob" alt="TipidLitro" style="border-radius:50%; object-fit:cover;">
+  <h1 class="splash-title"><em>Tipid</em>Litro</h1>
+  <p class="splash-tagline">Fuel &amp; Trip Intelligence</p>
+  <div class="splash-loader"><span></span></div>
+</div>
+
+<!-- ============ AUTH / LOGIN SCREEN ============ -->
+<div id="auth-screen">
+  <div class="auth-hero">
+    <img src="litro.png" class="mascot mascot-bob" alt="Litro" style="border-radius:50%; object-fit:cover;">
+  </div>
+  <div class="auth-sheet">
+    <h1 class="auth-title"><em>Tipid</em>Litro</h1>
+    <p class="auth-tagline">Sign in to estimate trip costs, track your range, and find fuel stations near you.</p>
+    <div class="auth-actions">
+      <button class="auth-btn auth-btn-google" id="authGoogleBtn">
+        <svg class="auth-google-icon" viewBox="0 0 48 48">
+          <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.5z"/>
+          <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l5.7-5.7C34.6 6 29.6 4 24 4c-7.6 0-14.1 4.3-17.7 10.7z"/>
+          <path fill="#4CAF50" d="M24 44c5.5 0 10.5-1.9 14.3-5.1l-6.6-5.6C29.6 35 26.9 36 24 36c-5.3 0-9.7-3.3-11.3-8l-6.6 5.1C9.8 39.6 16.4 44 24 44z"/>
+          <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.6 5.6C41.4 36 44 30.6 44 24c0-1.3-.1-2.7-.4-3.5z"/>
+        </svg>
+        <span class="auth-spinner"></span>
+        <span class="auth-btn-label">Continue with Google</span>
+      </button>
+      <button class="auth-btn auth-btn-guest" id="authGuestBtn">
+        <span class="auth-spinner"></span>
+        <span class="auth-btn-label">Continue as Guest</span>
+      </button>
+    </div>
+    <div class="auth-footnote">TipidLitro · 1X BIT</div>
+  </div>
+</div>
+
+<div class="app-scroll">
+
+<nav class="app-nav">
+  <div class="brand">
+    <span class="brand-mark">
+      <img src="icon_logo.png" alt="TipidLitro" style="border-radius:50%; object-fit:cover;">
+    </span>
+    <span>TipidLitro<small>Fuel &amp; Trip Intelligence</small></span>
+  </div>
+  <div class="nav-session">
+    <button class="nav-loc" id="navLocBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span id="navLocText">Use my location</span>
+    </button>
+    <div class="nav-user" id="navUser">
+      <span class="nav-user-avatar" id="navUserAvatar">G</span>
+      <span class="nav-user-name" id="navUserName">Guest Driver</span>
+    </div>
+    <button class="logout-btn" id="logoutBtn" aria-label="Log out" title="Log out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+    </button>
+  </div>
+</nav>
+
+<main>
+
+  <!-- ============ HOME ============ -->
+  <section class="view active" id="view-home">
+    <div class="hero">
+      <div>
+        <h1>Alamin bago umandar. <em>Tipid</em> ka dyan.</h1>
+        <p>TipidLitro turns your fuel gauge into a decision-making tool — estimate what a trip will really cost, know how far you can go before you're running on fumes, and find the nearest station without leaving the browser.</p>
+        <div class="hero-ctas">
+          <button class="btn btn-amber" data-goto="trip">Calculate a trip</button>
+          <button class="btn btn-ghost" data-goto="locator">Find gas near me</button>
+        </div>
+
+      </div>
+    
+    </div>
+
+    <div class="problem-solution">
+      <div class="ps-card">
+        <span class="section-label" style="color:var(--red)">The problem</span>
+        <h3>Fuel planning is mostly guesswork</h3>
+        <p>Rising fuel prices hit daily commutes and business trips hard. Most motorists plan by feel, not by numbers.</p>
+        <ul>
+          <li>No accurate way to estimate fuel consumption before a trip</li>
+          <li>No reliable way to plan cost-efficient routes</li>
+          <li>No accessible view of nearby fuel stations</li>
+        </ul>
+      </div>
+      <div class="ps-card">
+        <span class="section-label">The fix</span>
+        <h3>Three tools, one dashboard</h3>
+        <p>TipidLitro puts real numbers behind every trip — before you leave and while you're on the road, right in your browser, no installs.</p>
+        <ul>
+          <li>Trip Calculator turns a route into a peso amount and a travel time</li>
+          <li>Range Calculator turns your fuel level into a kilometer figure</li>
+          <li>Gas Locator turns your location into a sorted list of stations</li>
+        </ul>
+      </div>
+    </div>
+
+    <span class="section-label">Get started</span>
+    <div class="tool-grid">
+      <button class="tool-card" data-goto="trip">
+        <span class="tool-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14181C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+        <h4>Trip Calculator</h4>
+        <p>Enter your origin and destination — get the distance, fuel cost, and travel time.</p>
+        <span class="go">Open calculator →</span>
+      </button>
+      <button class="tool-card" data-goto="range">
+        <span class="tool-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14181C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+        <h4>Range Calculator</h4>
+        <p>Tell it your fuel level and consumption — know how far you can actually go.</p>
+        <span class="go">Open calculator →</span>
+      </button>
+      <button class="tool-card" data-goto="locator">
+        <span class="tool-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#14181C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        <h4>Gas Station Locator</h4>
+        <p>Find the closest stations to your current location, sorted by distance.</p>
+        <span class="go">Open locator →</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ TRIP CALCULATOR ============ -->
+  <section class="view" id="view-trip">
+    <div class="view-head">
+      <span class="section-label">Trip Calculator</span>
+      <h2>What will this trip actually cost you?</h2>
+      <p>Give it two points on the map (or a distance you already know) and your vehicle's numbers. It routes the trip and prices it out in pesos and minutes.</p>
+    </div>
+    <div class="calc-grid">
+      <div class="panel">
+        <h3>Route</h3>
+        <p class="hint">Type place names — TipidLitro will look them up.</p>
+
+        <div class="toggle-row" id="tripModeToggle">
+          <button class="active" data-mode="places">By places</button>
+          <button data-mode="distance">I know the distance</button>
+        </div>
+
+        <div id="tripPlacesFields">
+          <div class="field">
+            <label for="tripFrom">From</label>
+            <div class="row">
+              <input type="text" id="tripFrom" placeholder="e.g. Langgam, San Pedro, Laguna">
+              <button class="btn btn-ghost" id="tripUseLocBtn" style="white-space:nowrap;">📍 Use current</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="tripTo">To</label>
+            <input type="text" id="tripTo" placeholder="e.g. Brgy. Dila, Sta. Rosa, Laguna">
+          </div>
+        </div>
+
+        <div id="tripDistanceFields" style="display:none;">
+          <div class="field">
+            <label for="tripDistanceKm">Distance</label>
+            <div class="unit-input"><input type="number" id="tripDistanceKm" placeholder="0" min="0" step="0.1"><span>km</span></div>
+          </div>
+        </div>
+
+        <div class="divider-label">Vehicle profile</div>
+        <div class="field">
+          <label for="tripKmPerL">Fuel efficiency</label>
+          <div class="unit-input"><input type="number" id="tripKmPerL" min="0" step="0.1"><span>km / L</span></div>
+        </div>
+        <div class="field">
+          <label for="tripPrice">Fuel price</label>
+          <div class="unit-input"><input type="number" id="tripPrice" min="0" step="0.1"><span>₱ / L</span></div>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="tripCalcBtn">Calculate trip</button>
+      </div>
+
+      <div class="result-panel" id="tripResultPanel">
+        <h3>Result</h3>
+        <p class="hint">Fill in the route to see cost and time</p>
+        <div class="result-empty" id="tripEmpty">— no trip calculated yet —</div>
+        <div id="tripResultBody" style="display:none;">
+          <div class="readout-block">
+            <div class="rlabel">Estimated fuel cost</div>
+            <div class="rvalue" id="tripOutCost">₱0<span>PHP</span></div>
+          </div>
+          <div class="result-grid">
+            <div class="result-mini"><div class="rlabel">Distance</div><div class="rvalue" id="tripOutDist">0 km</div></div>
+            <div class="result-mini"><div class="rlabel">Travel time</div><div class="rvalue" id="tripOutTime">0 min</div></div>
+            <div class="result-mini"><div class="rlabel">Fuel needed</div><div class="rvalue" id="tripOutLiters">0 L</div></div>
+            <div class="result-mini"><div class="rlabel">Route</div><div class="rvalue" style="font-size:0.85rem;" id="tripOutRoute">—</div></div>
+          </div>
+          <div class="result-note" id="tripNote">Estimate based on driving distance and your vehicle profile. Actual cost varies with traffic and driving style.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RANGE CALCULATOR ============ -->
+  <section class="view" id="view-range">
+    <div class="view-head">
+      <span class="section-label">Range Calculator</span>
+      <h2>How far can you go on what's left in the tank?</h2>
+      <p>Enter your current fuel and your vehicle's consumption rate to see your realistic range before you need a refill.</p>
+    </div>
+    <div class="calc-grid">
+      <div class="panel">
+        <h3>Fuel level</h3>
+        <p class="hint">Use liters if you know them, or a rough tank percentage.</p>
+
+        <div class="toggle-row" id="rangeModeToggle">
+          <button class="active" data-mode="liters">In liters</button>
+          <button data-mode="percent">Tank %</button>
+        </div>
+
+        <div id="rangeLitersField">
+          <div class="field">
+            <label for="rangeLiters">Current fuel</label>
+            <div class="unit-input"><input type="number" id="rangeLiters" min="0" step="0.1" value="5"><span>L</span></div>
+          </div>
+        </div>
+        <div id="rangePercentField" style="display:none;">
+          <div class="field">
+            <label for="rangePercent">Current fuel</label>
+            <div class="unit-input"><input type="number" id="rangePercent" min="0" max="100" step="1" value="50"><span>%</span></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="rangeTank">Tank capacity</label>
+          <div class="unit-input"><input type="number" id="rangeTank" min="0" step="0.1" value="10"><span>L</span></div>
+        </div>
+        <div class="field">
+          <label for="rangeKmPerL">Fuel efficiency</label>
+          <div class="unit-input"><input type="number" id="rangeKmPerL" min="0" step="0.1" value="15"><span>km / L</span></div>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="rangeCalcBtn">Calculate range</button>
+      </div>
+
+      <div class="result-panel">
+        <h3>Result</h3>
+        <p class="hint">Your gauge and estimated range</p>
+        <div class="gauge-wrap">
+          <svg viewBox="0 0 260 150" id="rangeGaugeSvg">
+            <path d="M 20 130 A 110 110 0 0 1 240 130" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="16" stroke-linecap="round"/>
+            <path d="M 20 130 A 110 110 0 0 1 240 130" fill="none" stroke="url(#gaugeGrad)" stroke-width="16" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#D64545"/>
+                <stop offset="55%" stop-color="#F2A900"/>
+                <stop offset="100%" stop-color="#1E7F5C"/>
+              </linearGradient>
+            </defs>
+            <g id="gaugeNeedle" transform="translate(130,130) rotate(-90)">
+              <line x1="0" y1="0" x2="0" y2="-92" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+              <circle cx="0" cy="0" r="7" fill="#fff"/>
+            </g>
+          </svg>
+          <div class="gauge-value" id="rangeGaugeValue" style="color:#fff;">50<span style="color:rgba(255,255,255,0.5);">% tank</span></div>
+        </div>
+        <div class="readout-block" style="text-align:center; margin-top:22px;">
+          <div class="rlabel">Estimated range</div>
+          <div class="rvalue" id="rangeOutKm" style="font-size:2.6rem;">75<span>km</span></div>
+        </div>
+        <div class="result-note">Range shortens with heavy traffic, aircon use, and cargo load — treat this as an upper estimate.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GAS LOCATOR ============ -->
+  <section class="view" id="view-locator">
+    <div class="view-head">
+      <span class="section-label">Gas Station Locator</span>
+      <h2>Nearest stations, sorted by distance</h2>
+      <p>Share your location once — TipidLitro pulls real fuel stations around you from OpenStreetMap and plots them on the map.</p>
+      <button class="btn btn-amber" id="locatorFindBtn" style="margin-top:16px;">📍 Find stations near me</button>
+    </div>
+    <div class="locator-layout">
+      <div class="station-list" id="stationList">
+        <div class="empty-state">Tap "Find stations near me" to see what's around you.</div>
+      </div>
+      <div id="map"></div>
+    </div>
+  </section>
+
+</main>
+
+</div><!-- /.app-scroll -->
+
+<!-- ============ BOTTOM APP NAVIGATION ============ -->
+<nav class="bottom-nav" id="navTabs">
+  <button data-view="home" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
+    Home<span class="bn-dot"></span>
+  </button>
+  <button data-view="trip">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+    Trip<span class="bn-dot"></span>
+  </button>
+  <button data-view="range">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Range<span class="bn-dot"></span>
+  </button>
+  <button data-view="locator">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    Locator<span class="bn-dot"></span>
+  </button>
+</nav>
+
+<!-- ============ CHATBOT ============ -->
+<button class="chat-fab" id="chatFab" aria-label="Open Litro chat assistant">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span class="dot"></span>
+</button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <svg class="chat-mascot" viewBox="0 0 200 200" aria-hidden="true">
+      <path d="M100 18C132 62 168 96 168 132a68 68 0 1 1-136 0C32 96 68 62 100 18Z" fill="#F2A900"/>
+      <circle cx="76" cy="140" r="9" fill="#14181C"/>
+      <circle cx="124" cy="140" r="9" fill="#14181C"/>
+      <path d="M74 164q26 20 52 0" stroke="#14181C" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="who">Litro</div>
+      <div class="sub">Your fuel-planning assistant</div>
+    </div>
+    <button id="chatKeyBtn" aria-label="Set Gemini API key" title="Set Gemini API key">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </button>
+    <button id="chatCloseBtn" aria-label="Close chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chip-row" id="chatChips">
+    <button class="chip" data-prompt="How much and how long to travel to Sta Rosa, Laguna?">Trip to Sta Rosa</button>
+    <button class="chip" data-prompt="How far can I go with 3 liters?">Range on 3L</button>
+    <button class="chip" data-prompt="Find the nearest gas station">Nearest station</button>
+  </div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask Litro anything..." autocomplete="off">
+    <button id="chatSendBtn" aria-label="Send message">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- ============ ANDROID GESTURE BAR ============ -->
+<div class="android-home-indicator"><span></span></div>
+
+</div><!-- /.mobile-wrapper -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============================================================
+   TIPIDLITRO — app logic
+   Vanilla JS. Talks to:
+   - Nominatim (geocoding place names)
+   - OSRM demo server (driving routes: distance + duration)
+   - Overpass API (nearby fuel stations from OpenStreetMap)
+   ============================================================ */
+
+(function () {
+  "use strict";
+
+  /* ---------------- Global state ---------------- */
+  const state = {
+    vehicle: { kmPerL: 15, pricePerL: 65 }, // editable defaults: ~small motorcycle efficiency, rough PH pump price
+    currentLocation: null, // { lat, lng, label }
+    stations: [],
+    chatHistory: [], // { role: "user"|"model", parts: [...] } — full turn history, generateContent needs it resent every call
+  };
+
+  const NOMINATIM = "https://nominatim.openstreetmap.org/search";
+  const OSRM = "https://router.project-osrm.org/route/v1/driving/";
+  const OVERPASS = "https://overpass-api.de/api/interpreter";
+
+  const keyBtn = document.getElementById("chatKeyBtn");
+  if (keyBtn) keyBtn.style.display = "none";
+
+  /* ---------------- Small utils ---------------- */
+  function peso(n) {
+    if (!isFinite(n)) return "₱—";
+    return "₱" + Math.round(n).toLocaleString("en-PH");
+  }
+  function km(n) {
+    if (!isFinite(n)) return "— km";
+    return (n < 10 ? n.toFixed(1) : Math.round(n)) + " km";
+  }
+  function mins(n) {
+    if (!isFinite(n)) return "— min";
+    if (n >= 60) {
+      const h = Math.floor(n / 60), m = Math.round(n % 60);
+      return h + "h " + m + "m";
+    }
+    return Math.round(n) + " min";
+  }
+  function liters(n) {
+    if (!isFinite(n)) return "— L";
+    return n.toFixed(1) + " L";
+  }
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+  function $(id) { return document.getElementById(id); }
+
+  async function fetchJSON(url, opts) {
+    const res = await fetch(url, opts);
+    if (!res.ok) throw new Error("Request failed: " + res.status);
+    return res.json();
+  }
+
+  /* ---------------- Geocoding / routing ---------------- */
+  async function geocode(query) {
+    const url = NOMINATIM + "?format=json&limit=1&countrycodes=ph&q=" + encodeURIComponent(query);
+    const data = await fetchJSON(url);
+    if (!data || !data.length) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon), label: data[0].display_name };
+  }
+
+  async function reverseGeocode(lat, lng) {
+    try {
+      const url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lng;
+      const data = await fetchJSON(url);
+      if (data && data.display_name) {
+        const parts = data.display_name.split(",").map(s => s.trim());
+        return parts.slice(0, 3).join(", ");
+      }
+    } catch (e) { /* ignore, fall back below */ }
+    return lat.toFixed(4) + ", " + lng.toFixed(4);
+  }
+
+  async function routeBetween(a, b) {
+    const url = OSRM + a.lng + "," + a.lat + ";" + b.lng + "," + b.lat + "?overview=false";
+    const data = await fetchJSON(url);
+    if (!data || data.code !== "Ok" || !data.routes || !data.routes.length) return null;
+    const r = data.routes[0];
+    return { distanceKm: r.distance / 1000, durationMin: r.duration / 60 };
+  }
+
+  // Used only if the browser denies/blocks GPS (common in embedded previews/sandboxes) so demos never dead-end.
+  const FALLBACK_LOCATION = { lat: 14.5995, lng: 120.9842 }; // Manila
+
+  function getBrowserLocation() {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ lat: FALLBACK_LOCATION.lat, lng: FALLBACK_LOCATION.lng, approximate: true });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        pos => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, approximate: false }),
+        err => {
+          console.warn("Geolocation unavailable, using an approximate location instead:", err && err.message);
+          resolve({ lat: FALLBACK_LOCATION.lat, lng: FALLBACK_LOCATION.lng, approximate: true });
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+  }
+
+  async function useMyLocation() {
+    const navBtn = $("navLocBtn"), navText = $("navLocText");
+    navText.textContent = "Locating...";
+    const pos = await getBrowserLocation();
+    const label = await reverseGeocode(pos.lat, pos.lng);
+    state.currentLocation = { lat: pos.lat, lng: pos.lng, label, approximate: pos.approximate };
+    navBtn.classList.add("located");
+    const displayLabel = (pos.approximate ? "~ " : "") + (label.length > 24 ? label.slice(0, 22) + "…" : label);
+    navText.textContent = displayLabel;
+    if ($("tripFrom") && !$("tripFrom").value) $("tripFrom").value = label;
+    return state.currentLocation;
+  }
+
+  /* ---------------- Nav / view switching ---------------- */
+  function goto(view) {
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    document.querySelectorAll("#navTabs button").forEach(b => b.classList.remove("active"));
+    $("view-" + view).classList.add("active");
+    const tabBtn = document.querySelector('#navTabs button[data-view="' + view + '"]');
+    if (tabBtn) tabBtn.classList.add("active");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (view === "locator") setTimeout(ensureMap, 150);
+  }
+
+  document.addEventListener("click", e => {
+    const gotoEl = e.target.closest("[data-goto]");
+    if (gotoEl) goto(gotoEl.getAttribute("data-goto"));
+  });
+  document.querySelectorAll("#navTabs button").forEach(b => {
+    b.addEventListener("click", () => goto(b.getAttribute("data-view")));
+  });
+  $("navLocBtn").addEventListener("click", () => useMyLocation().catch(() => {}));
+
+  /* ---------------- Trip Calculator ---------------- */
+  const tripKmPerLEl = $("tripKmPerL"), tripPriceEl = $("tripPrice");
+  tripKmPerLEl.value = state.vehicle.kmPerL;
+  tripPriceEl.value = state.vehicle.pricePerL;
+  tripKmPerLEl.addEventListener("change", () => { state.vehicle.kmPerL = parseFloat(tripKmPerLEl.value) || state.vehicle.kmPerL; syncVehicleFields(); });
+  tripPriceEl.addEventListener("change", () => { state.vehicle.pricePerL = parseFloat(tripPriceEl.value) || state.vehicle.pricePerL; syncVehicleFields(); });
+
+  function syncVehicleFields() {
+    if ($("tripKmPerL")) $("tripKmPerL").value = state.vehicle.kmPerL;
+    if ($("tripPrice")) $("tripPrice").value = state.vehicle.pricePerL;
+    if ($("rangeKmPerL") && document.activeElement !== $("rangeKmPerL")) $("rangeKmPerL").value = state.vehicle.kmPerL;
+  }
+
+  let tripMode = "places";
+  $("tripModeToggle").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-mode]");
+    if (!btn) return;
+    tripMode = btn.getAttribute("data-mode");
+    document.querySelectorAll("#tripModeToggle button").forEach(b => b.classList.toggle("active", b === btn));
+    $("tripPlacesFields").style.display = tripMode === "places" ? "" : "none";
+    $("tripDistanceFields").style.display = tripMode === "distance" ? "" : "none";
+  });
+
+  $("tripUseLocBtn").addEventListener("click", async () => {
+    try {
+      const loc = await useMyLocation();
+      $("tripFrom").value = loc.label;
+    } catch (e) { alert("Couldn't get your location. Check your browser's location permission."); }
+  });
+
+  $("tripCalcBtn").addEventListener("click", () => runTripCalc());
+
+  async function runTripCalc() {
+    const btn = $("tripCalcBtn");
+    btn.disabled = true; const oldLabel = btn.textContent; btn.textContent = "Calculating...";
+    try {
+      const kmPerL = parseFloat($("tripKmPerL").value) || state.vehicle.kmPerL;
+      const pricePerL = parseFloat($("tripPrice").value) || state.vehicle.pricePerL;
+      state.vehicle.kmPerL = kmPerL; state.vehicle.pricePerL = pricePerL;
+
+      let distanceKm, durationMin, routeLabel;
+
+      if (tripMode === "distance") {
+        distanceKm = parseFloat($("tripDistanceKm").value);
+        if (!distanceKm || distanceKm <= 0) { alert("Enter a distance greater than 0."); return; }
+        durationMin = (distanceKm / 35) * 60; // assumed average city/provincial speed for manual mode
+        routeLabel = distanceKm.toFixed(1) + " km (manual)";
+      } else {
+        const fromText = $("tripFrom").value.trim();
+        const toText = $("tripTo").value.trim();
+        if (!toText) { alert("Enter a destination."); return; }
+        let origin = null;
+        if (state.currentLocation && (!fromText || fromText === state.currentLocation.label)) {
+          origin = state.currentLocation;
+        } else if (fromText) {
+          origin = await geocode(fromText);
+          if (!origin) { alert("Couldn't find that starting point. Try being more specific (barangay, city)."); return; }
+        } else {
+          alert("Enter a starting point or tap 'Use current'.");
+          return;
+        }
+        const dest = await geocode(toText);
+        if (!dest) { alert("Couldn't find that destination. Try being more specific (barangay, city)."); return; }
+        const routeData = await routeBetween(origin, dest);
+        if (!routeData) { alert("Couldn't calculate a driving route between those points."); return; }
+        distanceKm = routeData.distanceKm; durationMin = routeData.durationMin;
+        routeLabel = (fromText || origin.label).split(",")[0] + " → " + toText.split(",")[0];
+      }
+
+      renderTripResult(distanceKm, durationMin, kmPerL, pricePerL, routeLabel);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong reaching the mapping service. Please try again.");
+    } finally {
+      btn.disabled = false; btn.textContent = oldLabel;
+    }
+  }
+
+  function renderTripResult(distanceKm, durationMin, kmPerL, pricePerL, routeLabel) {
+    const litersNeeded = distanceKm / kmPerL;
+    const cost = litersNeeded * pricePerL;
+    $("tripEmpty").style.display = "none";
+    $("tripResultBody").style.display = "";
+    $("tripOutCost").innerHTML = peso(cost) + "<span>PHP</span>";
+    $("tripOutDist").textContent = km(distanceKm);
+    $("tripOutTime").textContent = mins(durationMin);
+    $("tripOutLiters").textContent = liters(litersNeeded);
+    $("tripOutRoute").textContent = routeLabel;
+    return { distanceKm, durationMin, litersNeeded, cost };
+  }
+
+  /* ---------------- Range Calculator ---------------- */
+  let rangeMode = "liters";
+  $("rangeModeToggle").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-mode]");
+    if (!btn) return;
+    rangeMode = btn.getAttribute("data-mode");
+    document.querySelectorAll("#rangeModeToggle button").forEach(b => b.classList.toggle("active", b === btn));
+    $("rangeLitersField").style.display = rangeMode === "liters" ? "" : "none";
+    $("rangePercentField").style.display = rangeMode === "percent" ? "" : "none";
+  });
+
+  $("rangeCalcBtn").addEventListener("click", () => runRangeCalc());
+  [$("rangeLiters"), $("rangePercent"), $("rangeTank"), $("rangeKmPerL")].forEach(el => {
+    el.addEventListener("keydown", e => { if (e.key === "Enter") runRangeCalc(); });
+  });
+
+  function runRangeCalc() {
+    const tank = parseFloat($("rangeTank").value) || 0;
+    const kmPerL = parseFloat($("rangeKmPerL").value) || state.vehicle.kmPerL;
+    let currentL;
+    if (rangeMode === "percent") {
+      const pct = clamp(parseFloat($("rangePercent").value) || 0, 0, 100);
+      currentL = (pct / 100) * tank;
+    } else {
+      currentL = parseFloat($("rangeLiters").value) || 0;
+    }
+    const pct = tank > 0 ? clamp((currentL / tank) * 100, 0, 100) : 0;
+    const rangeKm = currentL * kmPerL;
+
+    $("rangeOutKm").innerHTML = Math.round(rangeKm) + "<span>km</span>";
+    $("rangeGaugeValue").innerHTML = Math.round(pct) + "<span style='color:rgba(255,255,255,0.5);'>% tank</span>";
+    // needle sweeps -90deg (E) to +90deg (F) across the 180deg arc
+    const angle = -90 + (pct / 100) * 180;
+    $("gaugeNeedle").setAttribute("transform", "translate(130,130) rotate(" + angle + ")");
+
+    return { rangeKm, pct, currentL, tank, kmPerL };
+  }
+  runRangeCalc(); // initial paint with defaults
+
+  /* ---------------- Gas Station Locator ---------------- */
+  let leafletMap = null, markersLayer = null;
+
+  function ensureMap() {
+    if (leafletMap) { leafletMap.invalidateSize(); return; }
+    leafletMap = L.map("map").setView([14.3, 121.05], 12); // default: Laguna area
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors", maxZoom: 19
+    }).addTo(leafletMap);
+    markersLayer = L.layerGroup().addTo(leafletMap);
+  }
+
+  function haversineKm(a, b) {
+    const R = 6371, dLat = (b.lat - a.lat) * Math.PI / 180, dLng = (b.lng - a.lng) * Math.PI / 180;
+    const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+
+  async function findNearbyStations(center, radiusM) {
+    radiusM = radiusM || 6000;
+    const query = "[out:json][timeout:20];node[\"amenity\"=\"fuel\"](around:" + radiusM + "," + center.lat + "," + center.lng + ");out body;";
+    const data = await fetchJSON(OVERPASS, { method: "POST", body: "data=" + encodeURIComponent(query) });
+    const stations = (data.elements || []).map(el => ({
+      name: (el.tags && (el.tags.brand || el.tags.name)) || "Unnamed fuel station",
+      brand: el.tags && el.tags.brand || "",
+      lat: el.lat, lng: el.lon,
+      distanceKm: haversineKm(center, { lat: el.lat, lng: el.lon })
+    })).sort((a, b) => a.distanceKm - b.distanceKm);
+    return stations;
+  }
+
+  function renderStations(stations, center) {
+    ensureMap();
+    markersLayer.clearLayers();
+    const list = $("stationList");
+    if (!stations.length) {
+      list.innerHTML = '<div class="empty-state">No fuel stations found nearby in OpenStreetMap data. Try again in a busier area.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    const bounds = [];
+    if (center) {
+      L.circleMarker([center.lat, center.lng], { radius: 7, color: "#1E7F5C", fillColor: "#1E7F5C", fillOpacity: 1 })
+        .addTo(markersLayer).bindPopup("You are here");
+      bounds.push([center.lat, center.lng]);
+    }
+    stations.slice(0, 20).forEach(s => {
+      const marker = L.marker([s.lat, s.lng]).addTo(markersLayer).bindPopup("<b>" + s.name + "</b><br>" + s.distanceKm.toFixed(1) + " km away");
+      bounds.push([s.lat, s.lng]);
+      const card = document.createElement("div");
+      card.className = "station-card";
+      card.innerHTML =
+        '<div><h5>' + s.name + '</h5><div class="dist">' + s.distanceKm.toFixed(1) + ' km away</div></div>' +
+        '<a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=' + s.lat + ',' + s.lng + '">Directions</a>';
+      card.addEventListener("click", ev => {
+        if (ev.target.tagName === "A") return;
+        leafletMap.setView([s.lat, s.lng], 16);
+        marker.openPopup();
+      });
+      list.appendChild(card);
+    });
+    if (bounds.length) leafletMap.fitBounds(bounds, { padding: [30, 30] });
+  }
+
+  $("locatorFindBtn").addEventListener("click", async () => {
+    const btn = $("locatorFindBtn");
+    btn.disabled = true; const old = btn.textContent; btn.textContent = "Locating...";
+    try {
+      let loc = state.currentLocation;
+      if (!loc) loc = await useMyLocation();
+      btn.textContent = "Searching nearby...";
+      const stations = await findNearbyStations(loc, 6000);
+      state.stations = stations;
+      renderStations(stations, loc);
+    } catch (e) {
+      console.error(e);
+      $("stationList").innerHTML = '<div class="empty-state">Couldn\'t get your location or reach the map service. Check permissions and try again.</div>';
+    } finally {
+      btn.disabled = false; btn.textContent = old;
+    }
+  });
+
+  /* ---------------- Chatbot ---------------- */
+  const chatFab = $("chatFab"), chatPanel = $("chatPanel"), chatBody = $("chatBody"), chatInput = $("chatInput");
+  let chatOpened = false;
+
+
+const AI_CONFIG = {
+  apiKey: "AIzaSyB2sMh8tZLv2yxmlHKqvJnEUZH7iUJmfng",
+  model: "gemini-2.5-flash",
+  endpoint: "https://generativelanguage.googleapis.com/v1beta/models/"
+};
+
+  const AI_SYSTEM_INSTRUCTION =
+    "You are Litro, the in-app assistant for TipidLitro, a Philippine fuel-planning web app. " +
+    "You are the 'easy mode' front door to the app's tools: trip cost/time, fuel range, nearby gas stations, and saving vehicle settings. " +
+    "Always call the matching tool instead of estimating numbers yourself — only tool results are accurate; never invent distances, prices, or costs. " +
+    "The user's fuel efficiency (km/L) and fuel price (peso per liter) are remembered for the whole session once given. " +
+    "Whenever the user's message states either value — even in passing, even inside a bigger question like 'my car does 15km/l and gas is 70 a liter, how much to X' — pass those exact numbers into the km_per_l and/or price_per_l parameters of whichever tool you call. Calling the tool with these parameters saves them as the new default, so never tell the user to go change a setting elsewhere; you can save it yourself. " +
+    "If the user states a km/L or peso-per-liter value on its own, with no question attached (e.g. '70 pesos per liter' or 'my car gets 18km/l'), call update_vehicle_settings to save it and confirm in one short sentence — do not point them to a settings screen. " +
+    "If the user asks whether a quoted trip is round trip, or asks for round-trip cost, call calculate_trip_cost again with round_trip set to true instead of telling them to do the math themselves. " +
+    "If the user gives a plain distance in kilometers instead of naming a real destination place (e.g. 'I need to travel 15km, how much is that'), call calculate_trip_cost with distance_km set to that number and leave destination empty — do not invent a fake place name. " +
+    "Users may write in English, Tagalog, or Taglish — reply in whichever they used. " +
+    "Keep replies short (1-3 sentences), warm, and casual. Report peso/km/minute figures exactly as the tool returned them, do not recompute or round differently. " +
+    "If a tool result reports something is missing (like a location or fuel amount), ask the user for just that one thing in a short sentence instead of guessing. " +
+    "Do not use markdown symbols like ** or bullet dashes — plain sentences only.";
+
+  const AI_FUNCTIONS = [
+    {
+      name: "calculate_trip_cost",
+      description: "Get driving distance, time, and fuel cost between two Philippine places. Use for any 'how much / how long to get to X' question.",
+      parameters: {
+        type: "object",
+        properties: {
+          destination: { type: "string", description: "Destination place name, e.g. 'Sta Rosa, Laguna'. Omit this if the user gave a plain distance in km instead of a real place." },
+          origin: { type: "string", description: "Starting place name, if the user gave one. Omit to fall back to the user's current location." },
+          distance_km: { type: "number", description: "Use instead of destination when the user gives a plain distance in kilometers rather than naming a real place, e.g. 'I need to travel 15km'." },
+          km_per_l: { type: "number", description: "The vehicle's fuel efficiency in km per liter, if the user stated one in this message. Omit to use the saved value." },
+          price_per_l: { type: "number", description: "Fuel price in pesos per liter, if the user stated one in this message. Omit to use the saved value." },
+          round_trip: { type: "boolean", description: "Set true if the user is asking about a round trip (papunta-pabalik) rather than one-way." }
+        }
+      }
+    },
+    {
+      name: "calculate_range",
+      description: "Estimate how far the user can drive on a given amount of fuel, using their saved km/L efficiency. Use for any 'how far can I go' question.",
+      parameters: {
+        type: "object",
+        properties: {
+          liters: { type: "number", description: "Current fuel in liters, if the user gave a liter amount." },
+          fuel_percent: { type: "number", description: "Current fuel as a percent of a full tank (0-100), if the user gave a percentage instead of liters." },
+          km_per_l: { type: "number", description: "The vehicle's fuel efficiency in km per liter, if the user stated one in this message. Omit to use the saved value." }
+        }
+      }
+    },
+    {
+      name: "find_nearby_gas_stations",
+      description: "Find the nearest fuel stations to the user's current location.",
+      parameters: {
+        type: "object",
+        properties: {
+          radius_km: { type: "number", description: "Search radius in kilometers. Defaults to 6 if omitted." }
+        }
+      }
+    },
+    {
+      name: "update_vehicle_settings",
+      description: "Save the user's fuel efficiency (km/L) and/or fuel price (peso per liter) for the rest of the session, when they state a value without asking a calculation question.",
+      parameters: {
+        type: "object",
+        properties: {
+          km_per_l: { type: "number", description: "The vehicle's fuel efficiency in km per liter." },
+          price_per_l: { type: "number", description: "Fuel price in pesos per liter." }
+        }
+      }
+    }
+  ];
+
+  function toggleChat(open) {
+    chatPanel.classList.toggle("open", open);
+    if (open && !chatOpened) {
+      chatOpened = true;
+      addBotMessage("Hi! I'm Litro 👋 Ask me things like <i>\"how much and how long to travel to Sta Rosa\"</i> or <i>\"how far can I go with 3 liters\"</i>. Tap 📍 Use my location up top first for best answers, and feel free to tell me your car's km/L and the fuel price anytime — I'll remember it for this session.");
+    }
+    if (open) chatInput.focus();
+  }
+  chatFab.addEventListener("click", () => toggleChat(!chatPanel.classList.contains("open")));
+  $("chatCloseBtn").addEventListener("click", () => toggleChat(false));
+
+  function addUserMessage(text) {
+    const div = document.createElement("div");
+    div.className = "msg user";
+    div.textContent = text;
+    chatBody.appendChild(div);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+  function addBotMessage(html) {
+    const div = document.createElement("div");
+    div.className = "msg bot";
+    div.innerHTML = html;
+    chatBody.appendChild(div);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return div;
+  }
+  function addTyping() {
+    const div = document.createElement("div");
+    div.className = "msg bot typing";
+    div.innerHTML = "<span></span><span></span><span></span>";
+    chatBody.appendChild(div);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return div;
+  }
+
+  $("chatSendBtn").addEventListener("click", sendChat);
+  chatInput.addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
+  $("chatChips").addEventListener("click", e => {
+    const chip = e.target.closest(".chip");
+    if (!chip) return;
+    chatInput.value = chip.getAttribute("data-prompt");
+    sendChat();
+  });
+
+function sendChat() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    addUserMessage(text);
+    chatInput.value = "";
+    const typingEl = addTyping();
+    handleChatMessage(text).then(reply => {
+      typingEl.remove();
+      addBotMessage(reply);
+    }).catch(err => {
+      console.error("FULL API ERROR:", err);
+      typingEl.remove();
+      addBotMessage("API Error: " + (err && err.message ? err.message : "Network/Unknown error") + ". <br><br><b>Pindutin ang F12 (Console) para sa buong detalye.</b>");
+    });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function formatBotText(str) {
+    return escapeHtml(str).replace(/\n/g, "<br>");
+  }
+
+  async function runTool(name, args) {
+    args = args || {};
+    if (name === "calculate_trip_cost") {
+      if (!args.destination && !(typeof args.distance_km === "number" && args.distance_km > 0)) {
+        return { error: "No destination or distance given. Ask the user to name a place, or give a distance in km." };
+      }
+
+      const kmPerL = (typeof args.km_per_l === "number" && args.km_per_l > 0) ? args.km_per_l : state.vehicle.kmPerL;
+      const pricePerL = (typeof args.price_per_l === "number" && args.price_per_l > 0) ? args.price_per_l : state.vehicle.pricePerL;
+      state.vehicle.kmPerL = kmPerL;
+      state.vehicle.pricePerL = pricePerL;
+      syncVehicleFields();
+
+      let distanceKm, durationMin;
+
+      if (!args.destination && typeof args.distance_km === "number" && args.distance_km > 0) {
+        distanceKm = args.distance_km;
+        durationMin = (distanceKm / 35) * 60;
+      } else {
+        let origin = state.currentLocation;
+        if (args.origin) {
+          const geocodedOrigin = await geocode(args.origin);
+          if (geocodedOrigin) origin = geocodedOrigin;
+        }
+        if (!origin) {
+          try { origin = await useMyLocation(); }
+          catch (e) { return { error: "No origin available yet. Ask the user to tap the 'Use my location' button." }; }
+        }
+        const dest = await geocode(args.destination);
+        if (!dest) return { error: "Could not find the place '" + args.destination + "'." };
+        const routeData = await routeBetween(origin, dest);
+        if (!routeData) return { error: "Could not calculate a driving route between those two points right now." };
+        distanceKm = routeData.distanceKm; durationMin = routeData.durationMin;
+      }
+
+      let litersNeeded = distanceKm / kmPerL;
+      let cost = litersNeeded * pricePerL;
+      if (args.round_trip) {
+        distanceKm *= 2; durationMin *= 2; litersNeeded *= 2; cost *= 2;
+      }
+      return {
+        distance: km(distanceKm),
+        duration: mins(durationMin),
+        cost: peso(cost),
+        km_per_liter_used: kmPerL,
+        price_per_liter_used: pricePerL,
+        round_trip: !!args.round_trip
+      };
+    }
+    if (name === "calculate_range") {
+      const kmPerL = (typeof args.km_per_l === "number" && args.km_per_l > 0) ? args.km_per_l : state.vehicle.kmPerL;
+      state.vehicle.kmPerL = kmPerL;
+      syncVehicleFields();
+      let curL = null;
+      if (typeof args.liters === "number") curL = args.liters;
+      else if (typeof args.fuel_percent === "number") {
+        const tankEl = $("rangeTank");
+        const tank = (tankEl && parseFloat(tankEl.value)) || 10;
+        curL = (args.fuel_percent / 100) * tank;
+      }
+      if (curL == null) return { error: "No fuel amount given. Ask the user for liters or a percent." };
+      const rangeKm = curL * kmPerL;
+      return { range: km(rangeKm), liters_used: liters(curL), km_per_liter_used: kmPerL };
+    }
+    if (name === "update_vehicle_settings") {
+      if (typeof args.km_per_l === "number" && args.km_per_l > 0) state.vehicle.kmPerL = args.km_per_l;
+      if (typeof args.price_per_l === "number" && args.price_per_l > 0) state.vehicle.pricePerL = args.price_per_l;
+      syncVehicleFields();
+      return { saved: true, km_per_liter_used: state.vehicle.kmPerL, price_per_liter_used: state.vehicle.pricePerL };
+    }
+    if (name === "find_nearby_gas_stations") {
+      let loc = state.currentLocation;
+      if (!loc) {
+        try { loc = await useMyLocation(); }
+        catch (e) { return { error: "No location available yet. Ask the user to tap 'Use my location'." }; }
+      }
+      const radiusM = (args.radius_km || 6) * 1000;
+      const stations = await findNearbyStations(loc, radiusM);
+      state.stations = stations;
+      if (!stations.length) return { error: "No mapped fuel stations found nearby." };
+      return { stations: stations.slice(0, 3).map(s => ({ name: s.name, distance: s.distanceKm.toFixed(1) + " km" })) };
+    }
+    return { error: "Unknown tool: " + name };
+  }
+
+  async function callGenerateContent(contents) {
+    // INILIPAT ANG KEY SA URL, HINDI NA SA HEADERS PARA HINDI MAG 401 ERROR
+    const url = AI_CONFIG.endpoint + AI_CONFIG.model + ":generateContent?key=" + AI_CONFIG.apiKey;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        contents: contents,
+        tools: [{ functionDeclarations: AI_FUNCTIONS }],
+        systemInstruction: { parts: [{ text: AI_SYSTEM_INSTRUCTION }] }
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error("Gemini request failed: " + res.status + " " + errText);
+    }
+    return res.json();
+  }
+
+  async function handleChatMessage(text) {
+    state.chatHistory.push({ role: "user", parts: [{ text: text }] });
+
+    for (let turn = 0; turn < 5; turn++) {
+      let data;
+      try {
+        data = await callGenerateContent(state.chatHistory);
+} catch (reqErr) {
+        console.error("API Error:", reqErr);
+        state.chatHistory.pop();
+        return "🚨 ERROR: " + reqErr.message; 
+      }
+      
+      const candidate = data.candidates && data.candidates[0];
+      if (!candidate || !candidate.content) {
+        return "Sorry, I didn't get a reply back — try asking again.";
+      }
+      state.chatHistory.push(candidate.content);
+
+      const parts = candidate.content.parts || [];
+      const calls = parts.filter(p => p.functionCall).map(p => p.functionCall);
+
+      if (!calls.length) {
+        const textPart = parts.find(p => p.text);
+        return textPart ? formatBotText(textPart.text) : "Sorry, I didn't get a reply back — try asking again.";
+      }
+
+      const responseParts = [];
+      for (const call of calls) {
+        let result;
+        try {
+          result = await runTool(call.name, call.args);
+        } catch (toolErr) {
+          console.error("Tool '" + call.name + "' failed:", toolErr);
+          result = { error: "That lookup failed. Let the user know and suggest trying again in a moment." };
+        }
+        responseParts.push({ functionResponse: { name: call.name, response: result, id: call.id } });
+      }
+      state.chatHistory.push({ role: "user", parts: responseParts });
+    }
+    return "That request needed too many steps — try rephrasing, or use the tabs above directly.";
+  }
+
+  $("chatKeyBtn").addEventListener("click", () => {
+    const got = promptForApiKey("Set or update your Gemini API key:");
+    if (got) addBotMessage("Got it — your Gemini API key is saved for this session. Ask me anything!");
+  });
+
+
+  /* ---------------- Splash + Auth simulation ---------------- */
+  (function () {
+    const splashScreen = document.getElementById("splash-screen");
+    const authScreen = document.getElementById("auth-screen");
+    const googleBtn = document.getElementById("authGoogleBtn");
+    const guestBtn = document.getElementById("authGuestBtn");
+    const navUser = document.getElementById("navUser");
+    const navUserName = document.getElementById("navUserName");
+    const navUserAvatar = document.getElementById("navUserAvatar");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const mainEl = document.querySelector("main");
+    const appNav = document.querySelector(".app-nav");
+    const bottomNav = document.getElementById("navTabs");
+    const fab = document.getElementById("chatFab");
+    const panel = document.getElementById("chatPanel");
+
+    /* Splash screen: shown first, auto-advances into the login screen */
+    function showAuthScreen() {
+      splashScreen.classList.add("fade-out");
+      setTimeout(() => {
+        splashScreen.style.display = "none";
+        authScreen.classList.add("show");
+        // force reflow so the fade-in transition plays
+        void authScreen.offsetWidth;
+      }, 400);
+    }
+    setTimeout(showAuthScreen, 1800);
+
+    function setBtnLoading(btn, isLoading) {
+      btn.classList.toggle("loading", isLoading);
+      btn.disabled = isLoading;
+      const label = btn.querySelector(".auth-btn-label");
+      if (label) label.textContent = isLoading ? "Authenticating..." : btn.dataset.defaultLabel;
+    }
+
+    googleBtn.dataset.defaultLabel = "Continue with Google";
+    guestBtn.dataset.defaultLabel = "Continue as Guest";
+
+    function completeLogin(mode) {
+      if (mode === "google") {
+        navUserAvatar.textContent = "JC";
+        navUserName.textContent = "Juan Cruz";
+        navUser.classList.add("show");
+      } else {
+        navUserAvatar.textContent = "G";
+        navUserName.textContent = "Guest Driver";
+        navUser.classList.add("show");
+      }
+
+      authScreen.classList.add("fade-out");
+      setTimeout(() => {
+        authScreen.classList.remove("show");
+        authScreen.style.display = "none";
+        document.body.classList.add("authenticated");
+        [appNav, mainEl, bottomNav, fab, panel].forEach(el => {
+          if (el) el.classList.add("app-shell-fade");
+        });
+      }, 350);
+    }
+
+    function startLogin(btn, mode) {
+      if (btn.disabled) return;
+      setBtnLoading(btn, true);
+      setTimeout(() => {
+        setBtnLoading(btn, false);
+        completeLogin(mode);
+      }, 1500);
+    }
+
+    googleBtn.addEventListener("click", () => startLogin(googleBtn, "google"));
+    guestBtn.addEventListener("click", () => startLogin(guestBtn, "guest"));
+
+    logoutBtn.addEventListener("click", () => {
+      document.body.classList.remove("authenticated");
+      navUser.classList.remove("show");
+      authScreen.style.display = "flex";
+      authScreen.classList.add("show");
+      // force reflow so the fade-in transition replays
+      void authScreen.offsetWidth;
+      authScreen.classList.remove("fade-out");
+      setBtnLoading(googleBtn, false);
+      setBtnLoading(guestBtn, false);
+    });
+  })();
+
+})();
+
+</script>
+</body>
+</html>
