@@ -578,6 +578,36 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
 
 </div>
 
+<!-- ============ CHATBOT ============ -->
+<button class="chat-fab" id="chatFab" aria-label="Open Litro chat assistant">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  <span class="dot"></span>
+</button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-head">
+    <div>
+      <div class="who">Litro</div>
+      <div class="sub">Your fuel-planning assistant</div>
+    </div>
+    <button id="chatCloseBtn" aria-label="Close chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="chat-body" id="chatBody"></div>
+  <div class="chip-row" id="chatChips">
+    <button class="chip" data-prompt="How much and how long to travel to Sta Rosa, Laguna?">Trip to Sta Rosa</button>
+    <button class="chip" data-prompt="How far can I go with 3 liters?">Range on 3L</button>
+    <button class="chip" data-prompt="Find the nearest gas station">Nearest station</button>
+  </div>
+  <div class="chat-input-row">
+    <input type="text" id="chatInput" placeholder="Ask Litro anything..." autocomplete="off">
+    <button id="chatSendBtn" aria-label="Send message">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg>
+    </button>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
 /* ============================================================
@@ -596,6 +626,7 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
     vehicle: { kmPerL: 15, pricePerL: 65 }, // editable defaults: ~small motorcycle efficiency, rough PH pump price
     currentLocation: null, // { lat, lng, label }
     stations: [],
+    chatHistory: [], // { role: "user"|"model", parts: [...] } — full turn history, generateContent needs it resent every call
   };
 
   const NOMINATIM = "https://nominatim.openstreetmap.org/search";
@@ -925,6 +956,64 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
   const chatFab = $("chatFab"), chatPanel = $("chatPanel"), chatBody = $("chatBody"), chatInput = $("chatInput");
   let chatOpened = false;
 
+  /* ---- Gemini AI config ----
+     ⚠️ Paste a FRESH key here (revoke the one that was in your screenshot first —
+     anything shown in an image/chat should be treated as leaked).
+     Client-side keys are visible to anyone who views your page source. For a school
+     demo that's usually fine; before sharing the link widely, restrict the key to
+     your site's domain under "Edit API key" > "Website restrictions" in AI Studio,
+     or better, proxy this call through a tiny backend so the key never reaches the browser. */
+  const AI_CONFIG = {
+    apiKey: "AQ.Ab8RN6JPOVap24e1HUL4wRe727dJDlGZyZPK1JhRvFbxPxp4HA",
+    model: "gemini-3.5-flash",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/models/"
+  };
+
+  const AI_SYSTEM_INSTRUCTION =
+    "You are Litro, the in-app assistant for TipidLitro, a Philippine fuel-planning web app. " +
+    "You are the 'easy mode' front door to the app's three tools: trip cost/time, fuel range, and nearby gas stations. " +
+    "Always call the matching tool instead of estimating numbers yourself — only tool results are accurate; never invent distances, prices, or costs. " +
+    "Users may write in English, Tagalog, or Taglish — reply in whichever they used. " +
+    "Keep replies short (1-3 sentences), warm, and casual. Report peso/km/minute figures exactly as the tool returned them, do not recompute or round differently. " +
+    "If a tool result reports something is missing (like a location or fuel amount), ask the user for just that one thing in a short sentence instead of guessing. " +
+    "Do not use markdown symbols like ** or bullet dashes — plain sentences only.";
+
+  const AI_FUNCTIONS = [
+    {
+      name: "calculate_trip_cost",
+      description: "Get driving distance, time, and fuel cost between two Philippine places. Use for any 'how much / how long to get to X' question.",
+      parameters: {
+        type: "object",
+        properties: {
+          destination: { type: "string", description: "Destination place name, e.g. 'Sta Rosa, Laguna'." },
+          origin: { type: "string", description: "Starting place name, if the user gave one. Omit to fall back to the user's current location." }
+        },
+        required: ["destination"]
+      }
+    },
+    {
+      name: "calculate_range",
+      description: "Estimate how far the user can drive on a given amount of fuel, using their saved km/L efficiency. Use for any 'how far can I go' question.",
+      parameters: {
+        type: "object",
+        properties: {
+          liters: { type: "number", description: "Current fuel in liters, if the user gave a liter amount." },
+          fuel_percent: { type: "number", description: "Current fuel as a percent of a full tank (0-100), if the user gave a percentage instead of liters." }
+        }
+      }
+    },
+    {
+      name: "find_nearby_gas_stations",
+      description: "Find the nearest fuel stations to the user's current location.",
+      parameters: {
+        type: "object",
+        properties: {
+          radius_km: { type: "number", description: "Search radius in kilometers. Defaults to 6 if omitted." }
+        }
+      }
+    }
+  ];
+
   function toggleChat(open) {
     chatPanel.classList.toggle("open", open);
     if (open && !chatOpened) {
@@ -985,98 +1074,121 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
     });
   }
 
-  function extractNumber(text, unitPattern) {
-    const re = new RegExp("(\\d+(?:\\.\\d+)?)\\s*(?:" + unitPattern + ")", "i");
-    const m = text.match(re);
-    return m ? parseFloat(m[1]) : null;
+  function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function formatBotText(str) {
+    return escapeHtml(str).replace(/\n/g, "<br>");
   }
 
-  function extractDestination(text) {
-    const m = text.match(/(?:travel to|going to|papuntang|papunta sa|pumunta sa|to)\s+([a-z0-9ñ.,'\- ]+)$/i);
-    if (m) return m[1].replace(/[?!.]+$/, "").trim();
-    return null;
-  }
-  function extractOrigin(text) {
-    let m = text.match(/(?:^|,)\s*(?:i'?m in|im in|nasa)\s+([a-z0-9ñ.,'\- ]+?)(?:\s+(?:rn|right now|ngayon|na))?(?:,|$)/i);
-    if (m) return m[1].trim();
-    m = text.match(/from\s+([a-z0-9ñ.,'\- ]+?)\s+to\s/i);
-    if (m) return m[1].trim();
-    return null;
-  }
-
-  async function handleChatMessage(text) {
-    const lower = text.toLowerCase();
-
-    // --- FAQ / about intents ---
-    if (/what is tipidlitro|about this app|what does this (app|site) do/.test(lower)) {
-      return "TipidLitro helps you plan trips around fuel: the <b>Trip Calculator</b> prices out a route in pesos and minutes, the <b>Range Calculator</b> tells you how far your current fuel takes you, and the <b>Gas Locator</b> finds nearby stations. Ask me about any of those, or open the tabs above.";
-    }
-    if (/how (does|do) (the )?(trip calculator|range calculator|gas locator|locator)/.test(lower)) {
-      if (/trip/.test(lower)) return "The Trip Calculator looks up your origin and destination, calculates the driving distance and time, then multiplies distance by your vehicle's fuel efficiency and the fuel price to get a peso cost. Try the <b>Trip Calculator</b> tab, or just ask me a question like \"how much to travel from X to Y\".";
-      if (/range/.test(lower)) return "The Range Calculator multiplies your current fuel in liters by your km/L efficiency to estimate how far you can go. Try asking \"how far can I go with 4 liters\".";
-      return "The Gas Locator uses your current location to pull nearby fuel stations from OpenStreetMap and plots them on a map, sorted by distance. Tap 📍 Use my location, then open the <b>Gas Locator</b> tab, or just ask me for the nearest station.";
-    }
-
-    // --- Nearest station intent ---
-    if (/(nearest|malapit).{0,15}(station|gasolinahan|gas)|gas station near/.test(lower)) {
-      let loc = state.currentLocation;
-      if (!loc) {
-        try { loc = await useMyLocation(); }
-        catch (e) { return "I need your location for that — tap the 📍 <b>Use my location</b> button at the top, then ask me again."; }
-      }
-      const stations = await findNearbyStations(loc, 6000);
-      state.stations = stations;
-      if (!stations.length) return "I couldn't find any mapped fuel stations within 6 km of you. Try the Gas Locator tab and widen the search area.";
-      const top = stations.slice(0, 3).map(s => s.name + " — <span class='readout-inline'>" + s.distanceKm.toFixed(1) + " km</span>").join("<br>");
-      return "Closest stations to you:<br>" + top + "<br><br>Open the <b>Gas Locator</b> tab to see them on the map and get directions.";
-    }
-
-    // --- Range intent: "how far can I go with X liters" ---
-    if (/how far|gaano ka(layo|dami)|range/.test(lower) && /(liter|litro|\bl\b|%|percent)/.test(lower)) {
-      const litersQty = extractNumber(lower, "l(?:iters?|itro)?");
-      const pctQty = extractNumber(lower, "%|percent");
-      const kmPerL = state.vehicle.kmPerL;
-      let curL = null;
-      if (litersQty != null) curL = litersQty;
-      else if (pctQty != null) {
-        const tank = parseFloat($("rangeTank").value) || 10;
-        curL = (pctQty / 100) * tank;
-      }
-      if (curL == null) return "How much fuel do you have — in liters or as a % of your tank? e.g. \"how far can I go with 3 liters\".";
-      const rangeKm = curL * kmPerL;
-      return "With " + curL.toFixed(1) + " L at " + kmPerL + " km/L, you can go roughly <span class='readout-inline'>" + Math.round(rangeKm) + " km</span> before refueling. (Using your saved efficiency — adjust it in the Range Calculator tab if it's off.)";
-    }
-
-    // --- Trip cost/time intent ---
-    const wantsCost = /(how much|magkano|gastos|cost|presyo)/.test(lower);
-    const wantsTime = /(how long|gaano katagal|oras|(travel )?time|minutes)/.test(lower);
-    const destText = extractDestination(text);
-    if ((wantsCost || wantsTime) && destText) {
+  /* ---- Runs the actual app logic behind each tool the AI can call ---- */
+  async function runTool(name, args) {
+    args = args || {};
+    if (name === "calculate_trip_cost") {
       let origin = state.currentLocation;
-      const originText = extractOrigin(text);
-      if (originText) {
-        const geocoded = await geocode(originText);
-        if (geocoded) origin = geocoded;
+      if (args.origin) {
+        const geocodedOrigin = await geocode(args.origin);
+        if (geocodedOrigin) origin = geocodedOrigin;
       }
       if (!origin) {
         try { origin = await useMyLocation(); }
-        catch (e) { return "I need a starting point — tap 📍 <b>Use my location</b> above, or tell me \"from [place] to " + destText + "\"."; }
+        catch (e) { return { error: "No origin available yet. Ask the user to tap the 'Use my location' button, or tell you a starting point." }; }
       }
-      const dest = await geocode(destText);
-      if (!dest) return "I couldn't find \"" + destText + "\" — try adding the city or province, e.g. \"" + destText + ", Laguna\".";
+      const dest = await geocode(args.destination);
+      if (!dest) return { error: "Could not find the place '" + args.destination + "'. Ask the user to add a city or province." };
       const routeData = await routeBetween(origin, dest);
-      if (!routeData) return "I found both places but couldn't calculate a driving route between them right now. Try the Trip Calculator tab.";
+      if (!routeData) return { error: "Could not calculate a driving route between those two points right now." };
       const kmPerL = state.vehicle.kmPerL, pricePerL = state.vehicle.pricePerL;
       const litersNeeded = routeData.distanceKm / kmPerL;
       const cost = litersNeeded * pricePerL;
-      let answer = "About <span class='readout-inline'>" + peso(cost) + "</span> and <span class='readout-inline'>" + mins(routeData.durationMin) + "</span>";
-      answer += " for the " + km(routeData.distanceKm) + " trip to " + destText.split(",")[0] + ".";
-      answer += " (Based on " + kmPerL + " km/L @ ₱" + pricePerL + "/L — edit these in the Trip Calculator.)";
-      return answer;
+      return {
+        distance: km(routeData.distanceKm),
+        duration: mins(routeData.durationMin),
+        cost: peso(cost),
+        km_per_liter_used: kmPerL,
+        price_per_liter_used: pricePerL
+      };
+    }
+    if (name === "calculate_range") {
+      const kmPerL = state.vehicle.kmPerL;
+      let curL = null;
+      if (typeof args.liters === "number") curL = args.liters;
+      else if (typeof args.fuel_percent === "number") {
+        const tankEl = $("rangeTank");
+        const tank = (tankEl && parseFloat(tankEl.value)) || 10;
+        curL = (args.fuel_percent / 100) * tank;
+      }
+      if (curL == null) return { error: "No fuel amount given. Ask the user for liters or a percent of a full tank." };
+      const rangeKm = curL * kmPerL;
+      return { range: km(rangeKm), liters_used: liters(curL), km_per_liter_used: kmPerL };
+    }
+    if (name === "find_nearby_gas_stations") {
+      let loc = state.currentLocation;
+      if (!loc) {
+        try { loc = await useMyLocation(); }
+        catch (e) { return { error: "No location available yet. Ask the user to tap the 'Use my location' button." }; }
+      }
+      const radiusM = (args.radius_km || 6) * 1000;
+      const stations = await findNearbyStations(loc, radiusM);
+      state.stations = stations;
+      if (!stations.length) return { error: "No mapped fuel stations found nearby. Suggest widening the search in the Gas Locator tab." };
+      return { stations: stations.slice(0, 3).map(s => ({ name: s.name, distance: s.distanceKm.toFixed(1) + " km" })) };
+    }
+    return { error: "Unknown tool: " + name };
+  }
+
+  async function callGenerateContent(contents) {
+    const url = AI_CONFIG.endpoint + AI_CONFIG.model + ":generateContent";
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": AI_CONFIG.apiKey
+      },
+      body: JSON.stringify({
+        contents: contents,
+        tools: [{ functionDeclarations: AI_FUNCTIONS }],
+        systemInstruction: { parts: [{ text: AI_SYSTEM_INSTRUCTION }] }
+      })
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error("Gemini request failed: " + res.status + " " + errText);
+    }
+    return res.json();
+  }
+
+  async function handleChatMessage(text) {
+    if (!AI_CONFIG.apiKey || AI_CONFIG.apiKey.indexOf("PASTE_YOUR") === 0) {
+      return "The AI isn't set up yet — paste a Gemini API key into AI_CONFIG near the top of the &lt;script&gt; tag (search for 'PASTE_YOUR_NEW_GEMINI_API_KEY_HERE').";
     }
 
-    // --- fallback ---
-    return "I can help with trip cost, range, or nearby gas stations. Try: \"how much and how long to travel to [place]\", \"how far can I go with 3 liters\", or \"find the nearest gas station\".";
+    state.chatHistory.push({ role: "user", parts: [{ text: text }] });
+
+    for (let turn = 0; turn < 5; turn++) {
+      const data = await callGenerateContent(state.chatHistory);
+      const candidate = data.candidates && data.candidates[0];
+      if (!candidate || !candidate.content) {
+        return "Sorry, I didn't get a reply back — try asking again.";
+      }
+      state.chatHistory.push(candidate.content);
+
+      const parts = candidate.content.parts || [];
+      const calls = parts.filter(p => p.functionCall).map(p => p.functionCall);
+
+      if (!calls.length) {
+        const textPart = parts.find(p => p.text);
+        return textPart ? formatBotText(textPart.text) : "Sorry, I didn't get a reply back — try asking again.";
+      }
+
+      const responseParts = [];
+      for (const call of calls) {
+        const result = await runTool(call.name, call.args);
+        responseParts.push({ functionResponse: { name: call.name, response: result, id: call.id } });
+      }
+      state.chatHistory.push({ role: "user", parts: responseParts });
+    }
+    return "That request needed too many steps — try rephrasing, or use the tabs above directly.";
   }
 
 })();
