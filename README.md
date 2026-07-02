@@ -41,7 +41,7 @@ TipidLitro turns volatile fuel prices into clear, personalized guidance for ever
 - **Google Authentication** — simple, secure sign-in using Google accounts
 
 ## 🌐 Deployed Project
-- **Live Demo:** 
+- **Live Demo:** https://tipidlitro-dusky.vercel.app/
 - **Github Link:** https://github.com/jedelacruz/TipidLitro
 
 
