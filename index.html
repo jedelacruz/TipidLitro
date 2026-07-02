@@ -956,23 +956,22 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
   const chatFab = $("chatFab"), chatPanel = $("chatPanel"), chatBody = $("chatBody"), chatInput = $("chatInput");
   let chatOpened = false;
 
-  /* ---- Gemini AI config ----
-     ⚠️ Paste a FRESH key here (revoke the one that was in your screenshot first —
-     anything shown in an image/chat should be treated as leaked).
-     Client-side keys are visible to anyone who views your page source. For a school
-     demo that's usually fine; before sharing the link widely, restrict the key to
-     your site's domain under "Edit API key" > "Website restrictions" in AI Studio,
-     or better, proxy this call through a tiny backend so the key never reaches the browser. */
+
   const AI_CONFIG = {
-    apiKey: "AQ.Ab8RN6JPOVap24e1HUL4wRe727dJDlGZyZPK1JhRvFbxPxp4HA",
+    apiKey: "AQ.Ab8RN6Jjv4Ocxg-wdGBhT6cY4vmJRUfzHpI4ydPlY7Nl3WxC7g",
     model: "gemini-3.5-flash",
     endpoint: "https://generativelanguage.googleapis.com/v1beta/models/"
   };
 
   const AI_SYSTEM_INSTRUCTION =
     "You are Litro, the in-app assistant for TipidLitro, a Philippine fuel-planning web app. " +
-    "You are the 'easy mode' front door to the app's three tools: trip cost/time, fuel range, and nearby gas stations. " +
+    "You are the 'easy mode' front door to the app's tools: trip cost/time, fuel range, nearby gas stations, and saving vehicle settings. " +
     "Always call the matching tool instead of estimating numbers yourself — only tool results are accurate; never invent distances, prices, or costs. " +
+    "The user's fuel efficiency (km/L) and fuel price (peso per liter) are remembered for the whole session once given. " +
+    "Whenever the user's message states either value — even in passing, even inside a bigger question like 'my car does 15km/l and gas is 70 a liter, how much to X' — pass those exact numbers into the km_per_l and/or price_per_l parameters of whichever tool you call. Calling the tool with these parameters saves them as the new default, so never tell the user to go change a setting elsewhere; you can save it yourself. " +
+    "If the user states a km/L or peso-per-liter value on its own, with no question attached (e.g. '70 pesos per liter' or 'my car gets 18km/l'), call update_vehicle_settings to save it and confirm in one short sentence — do not point them to a settings screen. " +
+    "If the user asks whether a quoted trip is round trip, or asks for round-trip cost, call calculate_trip_cost again with round_trip set to true instead of telling them to do the math themselves. " +
+    "If the user gives a plain distance in kilometers instead of naming a real destination place (e.g. 'I need to travel 15km, how much is that'), call calculate_trip_cost with distance_km set to that number and leave destination empty — do not invent a fake place name. " +
     "Users may write in English, Tagalog, or Taglish — reply in whichever they used. " +
     "Keep replies short (1-3 sentences), warm, and casual. Report peso/km/minute figures exactly as the tool returned them, do not recompute or round differently. " +
     "If a tool result reports something is missing (like a location or fuel amount), ask the user for just that one thing in a short sentence instead of guessing. " +
@@ -985,10 +984,13 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
       parameters: {
         type: "object",
         properties: {
-          destination: { type: "string", description: "Destination place name, e.g. 'Sta Rosa, Laguna'." },
-          origin: { type: "string", description: "Starting place name, if the user gave one. Omit to fall back to the user's current location." }
-        },
-        required: ["destination"]
+          destination: { type: "string", description: "Destination place name, e.g. 'Sta Rosa, Laguna'. Omit this if the user gave a plain distance in km instead of a real place." },
+          origin: { type: "string", description: "Starting place name, if the user gave one. Omit to fall back to the user's current location." },
+          distance_km: { type: "number", description: "Use instead of destination when the user gives a plain distance in kilometers rather than naming a real place, e.g. 'I need to travel 15km'." },
+          km_per_l: { type: "number", description: "The vehicle's fuel efficiency in km per liter, if the user stated one in this message. Omit to use the saved value." },
+          price_per_l: { type: "number", description: "Fuel price in pesos per liter, if the user stated one in this message. Omit to use the saved value." },
+          round_trip: { type: "boolean", description: "Set true if the user is asking about a round trip (papunta-pabalik) rather than one-way." }
+        }
       }
     },
     {
@@ -998,7 +1000,8 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
         type: "object",
         properties: {
           liters: { type: "number", description: "Current fuel in liters, if the user gave a liter amount." },
-          fuel_percent: { type: "number", description: "Current fuel as a percent of a full tank (0-100), if the user gave a percentage instead of liters." }
+          fuel_percent: { type: "number", description: "Current fuel as a percent of a full tank (0-100), if the user gave a percentage instead of liters." },
+          km_per_l: { type: "number", description: "The vehicle's fuel efficiency in km per liter, if the user stated one in this message. Omit to use the saved value." }
         }
       }
     },
@@ -1011,6 +1014,17 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
           radius_km: { type: "number", description: "Search radius in kilometers. Defaults to 6 if omitted." }
         }
       }
+    },
+    {
+      name: "update_vehicle_settings",
+      description: "Save the user's fuel efficiency (km/L) and/or fuel price (peso per liter) for the rest of the session, when they state a value without asking a calculation question.",
+      parameters: {
+        type: "object",
+        properties: {
+          km_per_l: { type: "number", description: "The vehicle's fuel efficiency in km per liter." },
+          price_per_l: { type: "number", description: "Fuel price in pesos per liter." }
+        }
+      }
     }
   ];
 
@@ -1018,7 +1032,7 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
     chatPanel.classList.toggle("open", open);
     if (open && !chatOpened) {
       chatOpened = true;
-      addBotMessage("Hi! I'm Litro 👋 Ask me things like <i>\"how much and how long to travel to Sta Rosa\"</i> or <i>\"how far can I go with 3 liters\"</i>. Tap 📍 Use my location up top first for best answers.");
+      addBotMessage("Hi! I'm Litro 👋 Ask me things like <i>\"how much and how long to travel to Sta Rosa\"</i> or <i>\"how far can I go with 3 liters\"</i>. Tap 📍 Use my location up top first for best answers, and feel free to tell me your car's km/L and the fuel price anytime — I'll remember it for this session.");
     }
     if (open) chatInput.focus();
   }
@@ -1070,7 +1084,9 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
     }).catch(err => {
       console.error(err);
       typingEl.remove();
-      addBotMessage("Sorry, I hit a snag reaching the map service. Try again in a bit, or use the calculators directly.");
+      const reason = err && err.message ? err.message : "";
+      const hint = /gemini/i.test(reason) ? "the AI assistant" : "the map service";
+      addBotMessage("Sorry, I hit a snag reaching " + hint + (reason ? " (" + escapeHtml(reason) + ")" : "") + ". Try again in a bit, or use the calculators directly.");
     });
   }
 
@@ -1085,32 +1101,58 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
   async function runTool(name, args) {
     args = args || {};
     if (name === "calculate_trip_cost") {
-      let origin = state.currentLocation;
-      if (args.origin) {
-        const geocodedOrigin = await geocode(args.origin);
-        if (geocodedOrigin) origin = geocodedOrigin;
+      if (!args.destination && !(typeof args.distance_km === "number" && args.distance_km > 0)) {
+        return { error: "No destination or distance given. Ask the user to name a place, or give a distance in km." };
       }
-      if (!origin) {
-        try { origin = await useMyLocation(); }
-        catch (e) { return { error: "No origin available yet. Ask the user to tap the 'Use my location' button, or tell you a starting point." }; }
+
+      // Use fuel efficiency / price the user just stated in chat, if any, and remember it for later.
+      const kmPerL = (typeof args.km_per_l === "number" && args.km_per_l > 0) ? args.km_per_l : state.vehicle.kmPerL;
+      const pricePerL = (typeof args.price_per_l === "number" && args.price_per_l > 0) ? args.price_per_l : state.vehicle.pricePerL;
+      state.vehicle.kmPerL = kmPerL;
+      state.vehicle.pricePerL = pricePerL;
+      syncVehicleFields();
+
+      let distanceKm, durationMin;
+
+      if (!args.destination && typeof args.distance_km === "number" && args.distance_km > 0) {
+        // Plain distance given, no real place to geocode — same assumed speed as the calculator's manual mode.
+        distanceKm = args.distance_km;
+        durationMin = (distanceKm / 35) * 60;
+      } else {
+        let origin = state.currentLocation;
+        if (args.origin) {
+          const geocodedOrigin = await geocode(args.origin);
+          if (geocodedOrigin) origin = geocodedOrigin;
+        }
+        if (!origin) {
+          try { origin = await useMyLocation(); }
+          catch (e) { return { error: "No origin available yet. Ask the user to tap the 'Use my location' button, or tell you a starting point." }; }
+        }
+        const dest = await geocode(args.destination);
+        if (!dest) return { error: "Could not find the place '" + args.destination + "'. Ask the user to add a city or province." };
+        const routeData = await routeBetween(origin, dest);
+        if (!routeData) return { error: "Could not calculate a driving route between those two points right now." };
+        distanceKm = routeData.distanceKm; durationMin = routeData.durationMin;
       }
-      const dest = await geocode(args.destination);
-      if (!dest) return { error: "Could not find the place '" + args.destination + "'. Ask the user to add a city or province." };
-      const routeData = await routeBetween(origin, dest);
-      if (!routeData) return { error: "Could not calculate a driving route between those two points right now." };
-      const kmPerL = state.vehicle.kmPerL, pricePerL = state.vehicle.pricePerL;
-      const litersNeeded = routeData.distanceKm / kmPerL;
-      const cost = litersNeeded * pricePerL;
+
+      let litersNeeded = distanceKm / kmPerL;
+      let cost = litersNeeded * pricePerL;
+      if (args.round_trip) {
+        distanceKm *= 2; durationMin *= 2; litersNeeded *= 2; cost *= 2;
+      }
       return {
-        distance: km(routeData.distanceKm),
-        duration: mins(routeData.durationMin),
+        distance: km(distanceKm),
+        duration: mins(durationMin),
         cost: peso(cost),
         km_per_liter_used: kmPerL,
-        price_per_liter_used: pricePerL
+        price_per_liter_used: pricePerL,
+        round_trip: !!args.round_trip
       };
     }
     if (name === "calculate_range") {
-      const kmPerL = state.vehicle.kmPerL;
+      const kmPerL = (typeof args.km_per_l === "number" && args.km_per_l > 0) ? args.km_per_l : state.vehicle.kmPerL;
+      state.vehicle.kmPerL = kmPerL;
+      syncVehicleFields();
       let curL = null;
       if (typeof args.liters === "number") curL = args.liters;
       else if (typeof args.fuel_percent === "number") {
@@ -1121,6 +1163,16 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
       if (curL == null) return { error: "No fuel amount given. Ask the user for liters or a percent of a full tank." };
       const rangeKm = curL * kmPerL;
       return { range: km(rangeKm), liters_used: liters(curL), km_per_liter_used: kmPerL };
+    }
+    if (name === "update_vehicle_settings") {
+      if (typeof args.km_per_l === "number" && args.km_per_l > 0) state.vehicle.kmPerL = args.km_per_l;
+      if (typeof args.price_per_l === "number" && args.price_per_l > 0) state.vehicle.pricePerL = args.price_per_l;
+      syncVehicleFields();
+      return {
+        saved: true,
+        km_per_liter_used: state.vehicle.kmPerL,
+        price_per_liter_used: state.vehicle.pricePerL
+      };
     }
     if (name === "find_nearby_gas_stations") {
       let loc = state.currentLocation;
@@ -1183,7 +1235,13 @@ footer{ text-align:center; padding: 30px 0 50px; color: var(--ink-faint); font-s
 
       const responseParts = [];
       for (const call of calls) {
-        const result = await runTool(call.name, call.args);
+        let result;
+        try {
+          result = await runTool(call.name, call.args);
+        } catch (toolErr) {
+          console.error("Tool '" + call.name + "' failed:", toolErr);
+          result = { error: "That lookup failed (" + (toolErr && toolErr.message ? toolErr.message : "network issue") + "). Let the user know and suggest trying again in a moment." };
+        }
         responseParts.push({ functionResponse: { name: call.name, response: result, id: call.id } });
       }
       state.chatHistory.push({ role: "user", parts: responseParts });
