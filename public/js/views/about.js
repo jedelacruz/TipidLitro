@@ -1,0 +1,77 @@
+// Help & how it works: quick start, FAQ, glossary, architecture of the integration, limits.
+import { h, icon } from '../lib.js';
+import { GLOSSARY, pageHeader, section } from '../ui.js';
+
+const FAQ = [
+  ['Where do the prices come from?', 'From the Department of Energy (DOE). DOE monitors pump prices every week and publishes PDF reports. TipidLitro downloads and reads them automatically every hour.'],
+  ['Why is my station cheaper or pricier?', 'DOE\'s "common price" is what most stations charge. Individual stations, brands and promos differ. Use Stations to compare, or type your own price under More options.'],
+  ['How accurate is the trip cost?', 'Usually close for normal driving. It adjusts for traffic, hills, weather, aircon and load. Log your fill-ups in My Garage to use your real km/L.'],
+  ['Do I need an account?', 'No. Everything works without one. An account lets you save vehicles, trips, fill-ups, a budget and price alerts.'],
+  ['Does it work for motorcycles and jeepneys?', 'Yes — motorcycles, tricycles, cars, SUVs, vans, jeepneys and electric vehicles. Motorcycles get two-wheeler directions and expressway warnings.'],
+  ['Will it know about next week\'s rollback?', 'Price Watch estimates it from world oil prices during the week, then shows the official numbers once oil companies announce them on Monday.'],
+];
+const ADMIN_TERMS = ['integration', 'latency', 'cacheHit', 'job'];
+
+const box = (title, text, core) => h('div', { class: `box ${core ? 'core' : ''}` }, h('b', null, title), text);
+
+export async function render(root) {
+  root.append(
+    pageHeader({ title: 'Help & how it works', subtitle: 'Quick answers, the words we use, and how TipidLitro connects many data sources into one trip-cost answer.' }),
+    h('div', { class: 'card welcome', style: { marginBottom: '16px' } },
+      h('h3', { style: { marginTop: 0 } }, 'New here?'),
+      h('p', { class: 'muted' }, 'Take a one-minute tour of the Trip Planner, or just type a question in the chat (bottom right). Every page also has a ? button that explains it.'),
+      h('a', { class: 'btn primary small', href: '#/plan?tour=1' }, 'Take the tour')),
+    h('div', { class: 'grid cols-2', style: { marginBottom: '16px' } },
+      section({ title: 'Frequently asked questions', icon: 'info' }, FAQ.map(([q, a]) => h('details', { class: 'more' }, h('summary', null, q), h('p', { class: 'muted', style: { fontSize: '.9rem' } }, a)))),
+      section({ title: 'Words you will see', icon: 'news' }, h('dl', { class: 'glossary', style: { margin: 0 } }, Object.entries(GLOSSARY).filter(([k]) => !ADMIN_TERMS.includes(k)).map(([, [t, d]]) => [h('dt', null, t), h('dd', null, d)])))),
+    h('h2', { style: { margin: '8px 0 12px' } }, 'Under the hood'),
+    h('div', { class: 'card' },
+      h('h3', null, icon('route'), 'Architecture'),
+      h('div', { class: 'arch' },
+        h('div', { class: 'col' },
+          h('div', { class: 'section-title' }, 'External systems'),
+          box('DOE price reports', 'HTML listing + weekly PDFs (scraped)'),
+          box('OSRM · Photon · Nominatim', 'Routing and geocoding (REST/JSON)'),
+          box('Open-Meteo', 'Weather + elevation (REST/JSON)'),
+          box('Overpass (OSM)', 'Fuel stations (OverpassQL)'),
+          box('EIA / FRED · Frankfurter', 'Brent crude, USD/PHP'),
+          box('Google News RSS · PH outlets · GDELT', 'Headlines (RSS/XML, JSON)'),
+          box('Google Gemini', 'Language only: extract + phrase')),
+        h('div', { class: 'arrow' }, '→'),
+        h('div', { class: 'col' },
+          h('div', { class: 'section-title' }, 'Middleware (Node.js)'),
+          box('Integration adapters', 'One module per source; normalizes formats into one data model', true),
+          box('HTTP layer', 'Timeouts, retries, per-host rate limits (Nominatim 1/s, GDELT 1/5 s), call logging', true),
+          box('Cache', 'Memory + database cache keeps free tiers within limits', true),
+          box('Scheduler', 'DOE checked hourly (new reports import automatically), regional reports every 12 h, market every 6 h, news hourly, forecast every 3 h, then price alerts', true),
+          box('Services', 'Trip fuel model, price lookup, forecast, assistant', true)),
+        h('div', { class: 'arrow' }, '→'),
+        h('div', { class: 'col' },
+          h('div', { class: 'section-title' }, 'Single source of truth'),
+          box('MySQL / SQLite', 'fuel_prices, price_adjustments, market_series, news_articles, stations, users, saved_trips, fuel_logs, integration_log…', true),
+          h('div', { class: 'section-title', style: { marginTop: '10px' } }, 'Consumers'),
+          box('REST API → Web app', 'Trip Planner, Prices, Price Watch, Stations, News, Garage'),
+          box('REST API → Chat assistant', 'Answers only from stored data'),
+          box('Browser services', 'Leaflet + OSM tiles, Geolocation, deep links to Google Maps / Waze / Apple Maps / OpenStreetMap, GPX export')))),
+    h('div', { class: 'grid cols-2', style: { marginTop: '16px' } },
+      h('div', { class: 'card' }, h('h3', null, icon('fuel'), 'The trip estimate'),
+        h('ol', { style: { paddingLeft: '18px', margin: 0, fontSize: '.92rem' } },
+          h('li', null, 'OSRM returns up to 3 routes with distance, free-flow time, and expressway / toll / ferry segments.'),
+          h('li', null, 'Nominatim finds the region and city of your starting point, so the price comes from your city\'s DOE common price (NCR) or your region\'s report.'),
+          h('li', null, 'Open-Meteo elevation along each route adds fuel for climbing (m·g·h ÷ fuel energy × engine efficiency) and credits some back downhill.'),
+          h('li', null, 'Open-Meteo weather at your departure hour adds a wet-road penalty and head/tailwind effect.'),
+          h('li', null, 'Traffic (auto from Manila rush hours, or your choice), aircon, passengers and cargo, and driving style adjust km/L.'),
+          h('li', null, 'Liters × price per liter = pesos. Every adjustment is listed under "Why this estimate".'))),
+      h('div', { class: 'card' }, h('h3', null, icon('chat'), 'The assistant'),
+        h('p', { style: { fontSize: '.92rem' } }, 'Gemini turns your message (English, Filipino or Taglish) into a structured request: trip, budget, prices, forecast, news, comparison or detour. The server computes the answer from its own database and calculators, then Gemini only phrases those facts. Without a Gemini key, a rule-based parser gives the same numbers.'),
+        h('h3', { style: { marginTop: '14px' } }, icon('leaf'), 'SDG 11 — Sustainable cities'),
+        h('p', { style: { fontSize: '.92rem' } }, 'Knowing what a trip really costs helps commuters, riders and delivery workers budget, pick cheaper routes and stations, carpool (cost split), and see the CO₂ of each trip.'))),
+    h('div', { class: 'card', style: { marginTop: '16px' } }, h('h3', null, icon('alert'), 'Limits'),
+      h('ul', { style: { paddingLeft: '18px', margin: 0, fontSize: '.9rem' } },
+        h('li', null, 'DOE prices are weekly monitoring results; individual stations can price differently.'),
+        h('li', null, 'Regional (non-NCR) prices are computed from field office reports whose layouts vary, and are labelled as estimates.'),
+        h('li', null, 'Toll fees are not computed automatically (enter them under Trip options); ferry fares are not included. Motorcycles under 400cc are flagged on expressways, and MMDA number coding is checked for private cars.'),
+        h('li', null, 'Electricity for EVs uses a typical residential rate (editable); there is no free official real-time electricity price API.'),
+        h('li', null, 'History before 2019 has NCR-wide prices only (DOE reports from 2017–2018 have no city tables).'),
+        h('li', null, 'The price forecast is indicative: it uses Brent crude as a free stand-in for Singapore product prices (MOPS).'))));
+}

@@ -1,0 +1,29 @@
+{
+  "name": "tipidlitro",
+  "version": "1.0.0",
+  "description": "TipidLitro: An Integrated Fuel Cost Planning System for the Philippines",
+  "private": true,
+  "type": "module",
+  "main": "server/index.js",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch server/index.js",
+    "sync": "node --disable-warning=ExperimentalWarning server/cli.js sync",
+    "sync:prices": "node --disable-warning=ExperimentalWarning server/cli.js prices",
+    "check": "node --disable-warning=ExperimentalWarning server/cli.js check",
+    "make-admin": "node --disable-warning=ExperimentalWarning server/cli.js admin",
+    "backfill": "node --disable-warning=ExperimentalWarning server/cli.js backfill"
+  },
+  "dependencies": {
+    "chart.js": "^4.6.1",
+    "cheerio": "^1.2.0",
+    "express": "^5.3.0",
+    "fast-xml-parser": "^5.11.2",
+    "leaflet": "^1.9.4",
+    "mysql2": "^3.24.6",
+    "pdfjs-dist": "^6.4.299"
+  }
+}

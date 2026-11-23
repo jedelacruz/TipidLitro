@@ -1,0 +1,12 @@
+{
+  "name": "TipidLitro — Fuel Cost Planner PH",
+  "short_name": "TipidLitro",
+  "description": "Trip fuel cost estimates from official DOE pump prices, routing, weather and elevation.",
+  "start_url": "/#/plan",
+  "display": "standalone",
+  "background_color": "#f7f5f2",
+  "theme_color": "#ea580c",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
